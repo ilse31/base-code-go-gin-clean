@@ -11,6 +11,7 @@ import (
 
 	"base-code-go-gin-clean/internal/config"
 	"base-code-go-gin-clean/internal/handler"
+	"base-code-go-gin-clean/internal/routes"
 	"base-code-go-gin-clean/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +21,6 @@ type Server struct {
 	router *gin.Engine
 	config *config.Config
 	logger *slog.Logger
-	// Add other dependencies
 }
 
 func New(cfg *config.Config, log *slog.Logger) *Server {
@@ -28,17 +28,14 @@ func New(cfg *config.Config, log *slog.Logger) *Server {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	srv := &Server{
+	return &Server{
 		router: gin.New(),
 		config: cfg,
 		logger: log,
 	}
-
-	srv.SetupRoutes()
-	return srv
 }
 
-func (s *Server) SetupRoutes() {
+func (s *Server) SetupUserRoutes(userHandler *handler.UserHandler) {
 	s.router.Use(
 		middleware.RequestID(),
 		gin.Logger(),
@@ -48,10 +45,15 @@ func (s *Server) SetupRoutes() {
 	// Health check
 	s.router.GET("/health", handler.HealthCheck)
 
-	// API v1
+	// API v1 routes
 	v1 := s.router.Group("/api/v1")
 	{
+		// Health check
 		v1.GET("/ping", handler.Ping)
+
+
+		// Setup user routes
+		routes.SetupUserRoutes(v1, userHandler)
 	}
 }
 

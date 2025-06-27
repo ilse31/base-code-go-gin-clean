@@ -29,7 +29,7 @@ func NewDB(cfg *Config) (*DB, error) {
 	if cfg.Server.Environment == "development" {
 		db.AddQueryHook(bundebug.NewQueryHook(
 			bundebug.WithVerbose(true),
-			bundebug.FromEnv("BUNDEBUG"),
+			bundebug.WithEnabled(cfg.Server.Environment == "development"),
 		))
 	}
 
