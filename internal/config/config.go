@@ -7,6 +7,7 @@ type Config struct {
 	Server  ServerConfig
 	DB      DatabaseConfig
 	Tracing TracingConfig
+	Email   EmailConfig
 }
 
 type ServerConfig struct {
@@ -30,6 +31,14 @@ type TracingConfig struct {
 	DSN         string
 }
 
+type EmailConfig struct {
+	SMTPServer   string
+	SMTPPort     string
+	SMTPUsername string
+	SMTPPassword string
+	From         string
+}
+
 // Load loads the configuration from environment variables
 func Load() (*Config, error) {
 	cfg := &Config{
@@ -50,6 +59,13 @@ func Load() (*Config, error) {
 			ServiceName: GetEnv("SERVICE_NAME", "base-code-go-gin-clean"),
 			Version:     GetEnv("SERVICE_VERSION", "1.0.0"),
 			DSN:         GetEnv("UPTRACE_DSN", ""),
+		},
+		Email: EmailConfig{
+			SMTPServer:   GetEnv("SMTP_SERVER", "smtp.gmail.com"),
+			SMTPPort:     GetEnv("SMTP_PORT", "587"),
+			SMTPUsername: GetEnv("SMTP_USERNAME", ""),
+			SMTPPassword: GetEnv("SMTP_PASSWORD", ""),
+			From:         GetEnv("EMAIL_FROM", "noreply@example.com"),
 		},
 	}
 

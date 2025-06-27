@@ -1,0 +1,134 @@
+basePath: /api/v1
+definitions:
+  handler.ErrorResponse:
+    properties:
+      code:
+        example: 400
+        type: integer
+      errors: {}
+      message:
+        example: Bad Request
+        type: string
+      status:
+        example: error
+        type: string
+    type: object
+  handler.SuccessResponse:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data: {}
+      status:
+        example: success
+        type: string
+    type: object
+  health.HealthResponse:
+    properties:
+      status:
+        example: ok
+        type: string
+      version:
+        example: 1.0.0
+        type: string
+    type: object
+  user.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is a sample server for a clean Go Gin application.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Base Code Go Gin Clean API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Returns the health status of the API along with version information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with health status
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/health.HealthResponse'
+              type: object
+      summary: Show the status of server
+      tags:
+      - health api
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with user data
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.UserResponse'
+              type: object
+        "400":
+          description: 'Bad Request: Invalid user ID'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: 'Unauthorized: Authentication required'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: 'Forbidden: Insufficient permissions'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: 'Not Found: User not found'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get user by ID
+      tags:
+      - users
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

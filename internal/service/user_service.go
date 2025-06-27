@@ -10,7 +10,7 @@ import (
 )
 
 type UserService interface {
-	GetUserByID(ctx context.Context, id string) (*domain.User, error)
+	GetUserByID(ctx context.Context, id string) (*domain.UserResponse, error)
 }
 
 type userService struct {
@@ -23,7 +23,7 @@ func NewUserService(userRepo repository.UserRepository) UserService {
 	}
 }
 
-func (s *userService) GetUserByID(ctx context.Context, idStr string) (*domain.User, error) {
+func (s *userService) GetUserByID(ctx context.Context, idStr string) (*domain.UserResponse, error) {
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		return nil, errors.New("invalid user ID format")
@@ -34,5 +34,5 @@ func (s *userService) GetUserByID(ctx context.Context, idStr string) (*domain.Us
 		return nil, errors.New("user not found")
 	}
 
-	return user, nil
+	return user.ToResponse(), nil
 }

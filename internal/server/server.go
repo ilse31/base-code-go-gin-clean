@@ -10,55 +10,55 @@ import (
 	"time"
 
 	"base-code-go-gin-clean/internal/config"
-	"base-code-go-gin-clean/internal/handler"
-	"base-code-go-gin-clean/internal/routes"
-	"base-code-go-gin-clean/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// Server represents the HTTP server
 type Server struct {
 	router *gin.Engine
 	config *config.Config
 	logger *slog.Logger
+	server *http.Server
 }
 
-func New(cfg *config.Config, log *slog.Logger) *Server {
+// New creates a new Server instance
+func New(cfg *config.Config, log *slog.Logger, opts ...Option) *Server {
 	if cfg.Server.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	return &Server{
-		router: gin.New(),
+	// Initialize options
+	options := &ServerOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	// Initialize Gin router
+	router := gin.New()
+
+	// Add Swagger route
+	url := ginSwagger.URL("/swagger/doc.json") // The url pointing to API definition
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
+
+	srv := &Server{
+		router: router,
 		config: cfg,
 		logger: log,
 	}
+
+	// Setup server
+	srv.setupMiddleware()
+	srv.setupRoutes(options)
+
+	return srv
 }
 
-func (s *Server) SetupUserRoutes(userHandler *handler.UserHandler) {
-	s.router.Use(
-		middleware.RequestID(),
-		gin.Logger(),
-		gin.Recovery(),
-	)
-
-	// Health check
-	s.router.GET("/health", handler.HealthCheck)
-
-	// API v1 routes
-	v1 := s.router.Group("/api/v1")
-	{
-		// Health check
-		v1.GET("/ping", handler.Ping)
-
-
-		// Setup user routes
-		routes.SetupUserRoutes(v1, userHandler)
-	}
-}
-
+// Start starts the HTTP server
 func (s *Server) Start() error {
-	srv := &http.Server{
+	s.server = &http.Server{
 		Addr:         ":" + s.config.Server.Port,
 		Handler:      s.router,
 		ReadTimeout:  10 * time.Second,
@@ -69,27 +69,43 @@ func (s *Server) Start() error {
 	// Start server in goroutine
 	go func() {
 		s.logger.Info("Server starting", "port", s.config.Server.Port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			s.logger.Error("Server error", "error", err)
 		}
 	}()
 
-	// Handle graceful shutdown
-	quit := make(chan struct{})
-	go func() {
-		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
-		<-sigint
+	return s.handleShutdown()
+}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+// handleShutdown handles graceful shutdown of the server
+func (s *Server) handleShutdown() error {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-		if err := srv.Shutdown(ctx); err != nil {
-			s.logger.Error("Server shutdown error", "error", err)
-		}
-		close(quit)
-	}()
-
+	// Block until we receive our signal
 	<-quit
+
+	s.logger.Info("Shutting down server...")
+
+	// Create a deadline to wait for
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := s.server.Shutdown(ctx); err != nil {
+		s.logger.Error("Server forced to shutdown", "error", err)
+		return err
+	}
+
+	s.logger.Info("Server exited")
 	return nil
+}
+
+// GetRouter returns the underlying gin.Engine instance
+func (s *Server) GetRouter() *gin.Engine {
+	return s.router
+}
+
+// GetHTTPServer returns the underlying http.Server instance
+func (s *Server) GetHTTPServer() *http.Server {
+	return s.server
 }

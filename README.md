@@ -1,87 +1,142 @@
 # Base Code Go Gin Clean
 
-A clean architecture template for Go web applications using Gin framework.
+A clean architecture template for Go web applications using Gin framework and Bun ORM.
 
-## Features
+## 🚀 Features
 
-- Clean Architecture implementation
-- Gin web framework
-- PostgreSQL database with Bun ORM
-- Environment variable configuration
-- Structured logging
-- Graceful shutdown
-- Health check endpoint
-- User management (CRUD)
+- **Clean Architecture** - Well-structured project following clean architecture principles
+- **Gin Web Framework** - Fast and efficient HTTP web framework
+- **Bun ORM** - SQL-first Golang ORM with PostgreSQL support
+- **Database Migrations** - Built-in migration system using goose
+- **Environment Configuration** - Easy environment-based configuration
+- **Structured Logging** - JSON-formatted logs with different log levels
+- **Graceful Shutdown** - Proper handling of server shutdown
+- **Health Check** - Built-in health check endpoint
+- **User Management** - Basic user CRUD operations
+- **API Documentation** - Swagger/OpenAPI documentation
+- **Docker Support** - Easy containerization
 
-## Getting Started
+1. Clone the repository:
 
-### Prerequisites
+   ```bash
+   git clone https://github.com/yourusername/base-code-go-gin-clean.git
+   cd base-code-go-gin-clean
+   ```
 
-- Go 1.20 or higher
-- PostgreSQL 13 or higher
-- Make (optional)
+2. Copy environment file and update the values:
 
-### Installation
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-1. Clone the repository
-2. Copy `.env.example` to `.env` and update the values
 3. Install dependencies:
    ```bash
    go mod download
    ```
 
-### Environment Variables
+### ⚙️ Configuration
 
-Create a `.env` file in the root directory with the following variables:
+Update the `.env` file with your configuration:
 
-```
+```env
+# Server Configuration
 PORT=8080
-ENVIRONMENT=development
+ENVIRONMENT=development  # development, staging, production
 
-# Database
+# Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=yourpassword
 DB_NAME=yourdb
-DB_SSLMODE=disable
+DB_SSLMODE=disable  # disable, require, verify-full
+
+# Optional: Uptrace APM (set ENABLED=true to enable)
+TRACING_ENABLED=false
+SERVICE_NAME=base-code-go-gin-clean
+SERVICE_VERSION=1.0.0
+UPTRACE_DSN=
 ```
 
-### Running the Application
+### 🏃 Running the Application
+
+#### Using Make (recommended):
+
+```bash
+# Start the development server (with auto-reload)
+make dev
+
+# Run database migrations
+make migrate
+
+# Run database seeders
+make seed
+
+# Build the application
+make build
+```
+
+#### Using Go commands:
 
 ```bash
 # Run the application
 go run main.go
 
-# Or using make
-make run
+# Run database migrations
+cd cmd/migrate && go run .
+
+# Run database seeders
+cd cmd/seed && go run .
 ```
 
-## API Endpoints
+### 🐳 Using Docker
 
-### Users
+```bash
+# Build and start containers
+docker-compose up --build
 
-- `GET /api/v1/users/:id` - Get user by ID
+# Run migrations in the container
+docker-compose exec app make migrate
 
-### Health Check
+# Run seeders in the container
+docker-compose exec app make seed
+```
 
-- `GET /health` - Health check endpoint
-- `GET /api/v1/ping` - Ping endpoint
+## 📚 API Documentation
 
-## Project Structure
+Once the application is running, you can access:
+
+- **Swagger UI**: http://localhost:8080/swagger/index.html
+- **Health Check**: http://localhost:8080/health
+- **Ping Endpoint**: http://localhost:8080/api/v1/ping
+
+## 📂 Project Structure
 
 ```
 .
-├── cmd/                  # Main applications for this project
-├── internal/             # Private application and library code
-│   ├── config/          # Configuration
-│   ├── domain/          # Enterprise business rules
-│   ├── handler/         # HTTP handlers
+# Main application entry points
+├── cmd/                  
+│   ├── checkdb/         # Database connection checker
+│   ├── migrate/         # Database migration tool
+│   └── seed/            # Database seeder
+
+# Application code (private)
+├── internal/            
+│   ├── config/          # Configuration management
+│   ├── domain/          # Core business models and interfaces
+│   ├── handler/         # HTTP request handlers
+│   ├── pkg/             # Internal shared packages
 │   ├── repository/      # Data access layer
-│   ├── server/          # HTTP server configuration
-│   └── service/         # Business logic
-├── pkg/                 # Library code that's ok to use by external applications
-└── scripts/             # Build and deployment scripts
+│   ├── routes/          # Route definitions
+│   ├── seeders/         # Database seeders
+│   ├── server/          # Server configuration and setup
+│   └── service/         # Business logic layer
+
+# Public packages
+└── pkg/
+    ├── logger/          # Structured logging
+    └── middleware/      # HTTP middleware components
 ```
 
 ## License

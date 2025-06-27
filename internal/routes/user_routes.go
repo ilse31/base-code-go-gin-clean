@@ -8,8 +8,6 @@ import (
 
 // SetupUserRoutes configures all the user routes
 func SetupUserRoutes(router *gin.RouterGroup, userHandler *handler.UserHandler) {
-	users := router.Group("/users")
-	{
-		users.GET("/:id", userHandler.GetUserByID)
-	}
+	// User routes under /api/v1/users
+	router.GET("/users/:id", userHandler.GetUserByID)
 }
