@@ -1,0 +1,69 @@
+package config
+
+import "fmt"
+
+// Config holds all configuration for the application
+type Config struct {
+	Server ServerConfig
+	DB     DatabaseConfig
+	Tracing TracingConfig
+}
+
+type ServerConfig struct {
+	Port        string
+	Environment string
+}
+
+type DatabaseConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	Name     string
+	SSLMode  string
+}
+
+type TracingConfig struct {
+	Enabled     bool
+	ServiceName string
+	Version     string
+	DSN         string
+}
+
+// Load loads the configuration from environment variables
+func Load() (*Config, error) {
+	cfg := &Config{
+		Server: ServerConfig{
+			Port:        GetEnv("PORT", "8080"),
+			Environment: GetEnv("ENVIRONMENT", "development"),
+		},
+		DB: DatabaseConfig{
+			Host:     GetEnv("DB_HOST", "localhost"),
+			Port:     GetEnv("DB_PORT", "5432"),
+			User:     GetEnv("DB_USER", "postgres"),
+			Password: GetEnv("DB_PASSWORD", ""),
+			Name:     GetEnv("DB_NAME", "postgres"),
+			SSLMode:  GetEnv("DB_SSLMODE", "disable"),
+		},
+		Tracing: TracingConfig{
+			Enabled:     GetEnv("TRACING_ENABLED", "false") == "true",
+			ServiceName: GetEnv("SERVICE_NAME", "base-code-go-gin-clean"),
+			Version:     GetEnv("SERVICE_VERSION", "1.0.0"),
+			DSN:         GetEnv("UPTRACE_DSN", ""),
+		},
+	}
+
+	return cfg, nil
+}
+
+// GetDSN returns the database connection string
+func (db *DatabaseConfig) GetDSN() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		db.User,
+		db.Password,
+		db.Host,
+		db.Port,
+		db.Name,
+		db.SSLMode,
+	)
+}
