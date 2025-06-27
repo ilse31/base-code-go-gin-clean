@@ -4,8 +4,8 @@ import "fmt"
 
 // Config holds all configuration for the application
 type Config struct {
-	Server ServerConfig
-	DB     DatabaseConfig
+	Server  ServerConfig
+	DB      DatabaseConfig
 	Tracing TracingConfig
 }
 
@@ -41,7 +41,7 @@ func Load() (*Config, error) {
 			Host:     GetEnv("DB_HOST", "localhost"),
 			Port:     GetEnv("DB_PORT", "5432"),
 			User:     GetEnv("DB_USER", "postgres"),
-			Password: GetEnv("DB_PASSWORD", ""),
+			Password: GetEnv("DB_PASSWORD", "120579"),
 			Name:     GetEnv("DB_NAME", "postgres"),
 			SSLMode:  GetEnv("DB_SSLMODE", "disable"),
 		},
