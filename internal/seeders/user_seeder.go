@@ -4,7 +4,8 @@ import (
 	"context"
 	"time"
 
-	"base-code-go-gin-clean/internal/domain"
+	"base-code-go-gin-clean/internal/domain/user"
+
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -24,7 +25,7 @@ func NewUserSeeder(db *bun.DB) *UserSeeder {
 // Seed creates sample users in the database
 func (s *UserSeeder) Seed(ctx context.Context) error {
 	// Check if users already exist
-	count, err := s.db.NewSelect().Model((*domain.User)(nil)).Count(ctx)
+	count, err := s.db.NewSelect().Model((*user.User)(nil)).Count(ctx)
 	if err != nil {
 		return err
 	}
@@ -35,7 +36,7 @@ func (s *UserSeeder) Seed(ctx context.Context) error {
 	}
 
 	// Sample users data
-	users := []*domain.User{
+	users := []*user.User{
 		{
 			ID:        uuid.MustParse("00000000-0000-0000-0000-000000000001"),
 			Name:      "Admin User",
@@ -74,14 +75,14 @@ func (s *UserSeeder) Seed(ctx context.Context) error {
 // SeedAll runs all seeders
 func SeedAll(db *bun.DB) error {
 	ctx := context.Background()
-	
+
 	// Initialize seeders
 	userSeeder := NewUserSeeder(db)
-	
+
 	// Run seeders
 	if err := userSeeder.Seed(ctx); err != nil {
 		return err
 	}
-	
+
 	return nil
 }

@@ -3,15 +3,15 @@ package service
 import (
 	"fmt"
 
-	"base-code-go-gin-clean/internal/domain"
+	domain "base-code-go-gin-clean/internal/domain/email"
 	"base-code-go-gin-clean/internal/email"
 )
 
 type DailyReportService struct {
-	emailService EmailService
+	emailService domain.EmailService
 }
 
-func NewDailyReportService(emailService EmailService) *DailyReportService {
+func NewDailyReportService(emailService domain.EmailService) *DailyReportService {
 	return &DailyReportService{
 		emailService: emailService,
 	}
@@ -37,7 +37,6 @@ func (s *DailyReportService) GenerateAndSendDailyReport() {
 		Body:    body,
 	}
 
-	
 	if err := s.emailService.SendEmail(email); err != nil {
 		// Log the error, but don't fail the entire application
 		// You might want to use a proper logger here

@@ -1,5 +1,29 @@
 basePath: /api/v1
 definitions:
+  base-code-go-gin-clean_internal_handler_user.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  email.Email:
+    properties:
+      body:
+        type: string
+      subject:
+        type: string
+      to:
+        items:
+          type: string
+        type: array
+    type: object
   handler.ErrorResponse:
     properties:
       code:
@@ -32,19 +56,6 @@ definitions:
         example: 1.0.0
         type: string
     type: object
-  user.UserResponse:
-    properties:
-      created_at:
-        type: string
-      email:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      updated_at:
-        type: string
-    type: object
 host: localhost:8080
 info:
   contact:
@@ -59,6 +70,42 @@ info:
   title: Base Code Go Gin Clean API
   version: "1.0"
 paths:
+  /email/send:
+    post:
+      consumes:
+      - application/json
+      description: Send an email using the configured SMTP server
+      parameters:
+      - description: Email details
+        in: body
+        name: email
+        required: true
+        schema:
+          $ref: '#/definitions/email.Email'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message": "Email sent successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error": "Bad request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error": "Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Send an email
+      tags:
+      - email
   /health:
     get:
       consumes:
@@ -100,7 +147,7 @@ paths:
             - $ref: '#/definitions/handler.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UserResponse'
+                  $ref: '#/definitions/base-code-go-gin-clean_internal_handler_user.UserResponse'
               type: object
         "400":
           description: 'Bad Request: Invalid user ID'

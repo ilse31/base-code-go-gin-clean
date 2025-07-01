@@ -1,14 +1,14 @@
 package user
 
 import (
-	"base-code-go-gin-clean/internal/domain"
+	"base-code-go-gin-clean/internal/domain/user"
 )
 
 // UserResponse represents the user response structure
-type UserResponse = domain.UserResponse
+type UserResponse = user.UserResponse
 
 // NewUserResponse creates a new UserResponse from domain model
-func NewUserResponse(user *domain.User) *UserResponse {
+func NewUserResponse(user *user.User) *UserResponse {
 	return user.ToResponse()
 }
 
@@ -19,7 +19,7 @@ type UserListResponse struct {
 }
 
 // NewUserListResponse creates a new UserListResponse from domain models
-func NewUserListResponse(users []*domain.User, total int64) *UserListResponse {
+func NewUserListResponse(users []*user.User, total int64) *UserListResponse {
 	resp := &UserListResponse{
 		Total: total,
 	}

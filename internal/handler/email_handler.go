@@ -3,16 +3,16 @@ package handler
 import (
 	"net/http"
 
-	"base-code-go-gin-clean/internal/domain"
-	"base-code-go-gin-clean/internal/service"
+	domain "base-code-go-gin-clean/internal/domain/email"
+
 	"github.com/gin-gonic/gin"
 )
 
 type EmailHandler struct {
-	emailService service.EmailService
+	emailService domain.EmailService
 }
 
-func NewEmailHandler(emailService service.EmailService) *EmailHandler {
+func NewEmailHandler(emailService domain.EmailService) *EmailHandler {
 	return &EmailHandler{
 		emailService: emailService,
 	}
@@ -28,7 +28,7 @@ func NewEmailHandler(emailService service.EmailService) *EmailHandler {
 // @Success 200 {object} map[string]string "message": "Email sent successfully"
 // @Failure 400 {object} map[string]string "error": "Bad request"
 // @Failure 500 {object} map[string]string "error": "Internal server error"
-// @Router /api/v1/email/send [post]
+// @Router /email/send [post]
 func (h *EmailHandler) SendEmail(c *gin.Context) {
 	var email domain.Email
 	if err := c.ShouldBindJSON(&email); err != nil {

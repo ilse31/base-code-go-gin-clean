@@ -4,26 +4,26 @@ import (
 	"context"
 	"errors"
 
-	"base-code-go-gin-clean/internal/domain"
-	"base-code-go-gin-clean/internal/repository"
+	"base-code-go-gin-clean/internal/domain/user"
+
 	"github.com/google/uuid"
 )
 
 type UserService interface {
-	GetUserByID(ctx context.Context, id string) (*domain.UserResponse, error)
+	GetUserByID(ctx context.Context, id string) (*user.UserResponse, error)
 }
 
 type userService struct {
-	userRepo repository.UserRepository
+	userRepo user.UserRepository
 }
 
-func NewUserService(userRepo repository.UserRepository) UserService {
+func NewUserService(userRepo user.UserRepository) UserService {
 	return &userService{
 		userRepo: userRepo,
 	}
 }
 
-func (s *userService) GetUserByID(ctx context.Context, idStr string) (*domain.UserResponse, error) {
+func (s *userService) GetUserByID(ctx context.Context, idStr string) (*user.UserResponse, error) {
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		return nil, errors.New("invalid user ID format")
