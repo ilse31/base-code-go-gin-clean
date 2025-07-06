@@ -9,35 +9,52 @@ package wire
 import (
 	"base-code-go-gin-clean/internal/config"
 	"base-code-go-gin-clean/internal/handler"
+	"base-code-go-gin-clean/internal/handler/auth"
+	"base-code-go-gin-clean/internal/pkg/token"
 	"base-code-go-gin-clean/internal/repository"
 	"base-code-go-gin-clean/internal/server"
 	"base-code-go-gin-clean/internal/service"
 	"base-code-go-gin-clean/pkg/logger"
+	"github.com/google/wire"
 	"github.com/uptrace/bun"
 )
 
 // Injectors from wire.go:
 
-func InitializeServer() (*server.Server, error) {
-	config, err := ProvideConfig()
+// InitializeServer initializes the application server with all dependencies
+func InitializeServer() (*server.Server, func(), error) {
+	configConfig, err := ProvideConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	string2 := ProvideEnv(config)
+	string2 := ProvideEnv(configConfig)
 	slogLogger := logger.New(string2)
-	db, err := ProvideDB(config)
+	db, err := ProvideDB(configConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	bunDB := ProvideBunDB(db)
 	userRepository := repository.NewUserRepository(bunDB)
 	userService := service.NewUserService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
-	emailService := service.NewEmailService(config)
-	emailHandler := handler.NewEmailHandler(emailService)
-	v := ProvideServerOptions(userHandler, emailHandler)
-	serverServer := server.New(config, slogLogger, v...)
-	return serverServer, nil
+	tokenService, err := ProvideTokenService(configConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	authService := service.NewAuthService(userRepository, tokenService)
+	authHandler := auth.NewAuthHandler(authService)
+	emailService := ProvideEmailService(configConfig)
+	emailHandler := ProvideEmailHandler(emailService)
+	tokenConfig := config.NewTokenConfig(configConfig)
+	serverOptions := &server.ServerOptions{
+		UserHandler:  userHandler,
+		AuthHandler:  authHandler,
+		EmailHandler: emailHandler,
+		TokenConfig:  tokenConfig,
+	}
+	serverServer := server.New(configConfig, slogLogger, serverOptions)
+	return serverServer, func() {
+	}, nil
 }
 
 // wire.go:
@@ -53,7 +70,34 @@ func ProvideEnv(cfg *config.Config) string {
 // ProvideServerOptions assembles all server options (handlers)
 func ProvideServerOptions(
 	userHandler *handler.UserHandler,
+	authHandler *auth.AuthHandler,
 	emailHandler *handler.EmailHandler,
-) []server.Option {
-	return []server.Option{server.WithUserHandler(userHandler), server.WithEmailHandler(emailHandler)}
+	tokenConfig *config.TokenConfig,
+) *server.ServerOptions {
+	return &server.ServerOptions{
+		UserHandler:  userHandler,
+		AuthHandler:  authHandler,
+		EmailHandler: emailHandler,
+		TokenConfig:  tokenConfig,
+	}
 }
+
+// TokenConfigSet provides the token configuration
+var TokenConfigSet = wire.NewSet(config.NewTokenConfig)
+
+// TokenServiceSet provides the token service with its dependencies
+var TokenServiceSet = wire.NewSet(token.NewTokenService, TokenConfigSet)
+
+// AuthServiceSet is a Wire provider set that provides the auth service with its dependencies
+var AuthServiceSet = wire.NewSet(service.NewAuthService, TokenServiceSet)
+
+// HandlerSet is a Wire provider set that provides all handlers
+var HandlerSet = wire.NewSet(handler.NewUserHandler, handler.NewEmailHandler, auth.NewAuthHandler, ProvideEmailHandler)
+
+// ServiceSet is a Wire provider set that provides all services
+var ServiceSet = wire.NewSet(service.NewUserService, ProvideEmailService,
+	AuthServiceSet,
+)
+
+// RepositorySet is a Wire provider set that provides all repositories
+var RepositorySet = wire.NewSet(repository.NewUserRepository)

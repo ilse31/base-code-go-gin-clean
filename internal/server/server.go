@@ -25,15 +25,15 @@ type Server struct {
 }
 
 // New creates a new Server instance
-func New(cfg *config.Config, log *slog.Logger, opts ...Option) *Server {
+func New(cfg *config.Config, log *slog.Logger, opts *ServerOptions) *Server {
 	if cfg.Server.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	// Initialize options
-	options := &ServerOptions{}
-	for _, opt := range opts {
-		opt(options)
+	options := opts
+	if options == nil {
+		options = &ServerOptions{}
 	}
 
 	// Initialize Gin router

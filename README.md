@@ -12,6 +12,7 @@ A clean architecture template for Go web applications using Gin framework and Bu
 - **Structured Logging** - JSON-formatted logs with different log levels
 - **Graceful Shutdown** - Proper handling of server shutdown
 - **Health Check** - Built-in health check endpoint
+- **Authentication** - Secure user registration and login with bcrypt password hashing
 - **User Management** - Basic user CRUD operations
 - **API Documentation** - Swagger/OpenAPI documentation
 - **Docker Support** - Easy containerization
@@ -110,6 +111,41 @@ Once the application is running, you can access:
 - **Swagger UI**: http://localhost:8080/swagger/index.html
 - **Health Check**: http://localhost:8080/health
 - **Ping Endpoint**: http://localhost:8080/api/v1/ping
+
+## API Endpoints
+
+### Health Check
+
+- `GET /health` - Check if the server is running
+
+### Authentication
+
+#### Register a new user
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securepassword123"
+}
+```
+
+#### Login
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "securepassword123"
+}
+```
+
+### Users
+
+- `GET /api/v1/users/:id` - Get user by ID
 
 ## 📂 Project Structure
 

@@ -3,6 +3,8 @@ package server
 import (
 	"base-code-go-gin-clean/internal/handler"
 	"base-code-go-gin-clean/internal/handler/health"
+	"base-code-go-gin-clean/internal/middleware"
+	"base-code-go-gin-clean/internal/pkg/token"
 	"base-code-go-gin-clean/internal/routes"
 )
 
@@ -21,9 +23,16 @@ func (s *Server) setupRoutes(opts *ServerOptions) {
 			public.GET("/ping", handler.Ping)
 		}
 
-		// Setup user routes if user handler is provided
-		if opts.UserHandler != nil {
-			routes.SetupUserRoutes(apiV1, opts.UserHandler)
+		// Protected routes group (requires authentication)
+		protected := apiV1.Group("")
+		if opts.TokenConfig != nil {
+			tokenService := token.NewTokenService(opts.TokenConfig)
+			protected.Use(middleware.AuthMiddleware(tokenService))
+
+			// Setup user routes under protected group if user handler is provided
+			if opts.UserHandler != nil {
+				routes.SetupUserRoutes(protected, opts.UserHandler)
+			}
 		}
 
 		// Setup roles routes if roles handler is provided
@@ -34,6 +43,11 @@ func (s *Server) setupRoutes(opts *ServerOptions) {
 		// Setup email routes if email handler is provided
 		if opts.EmailHandler != nil {
 			routes.SetupEmailRoutes(apiV1, opts.EmailHandler)
+		}
+
+		// Setup auth routes if auth handler is provided
+		if opts.AuthHandler != nil && opts.TokenConfig != nil {
+			routes.SetupAuthRoutes(apiV1, opts.AuthHandler, opts.TokenConfig)
 		}
 
 		// Protected routes group

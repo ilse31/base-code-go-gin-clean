@@ -8,6 +8,16 @@ type Config struct {
 	DB      DatabaseConfig
 	Tracing TracingConfig
 	Email   EmailConfig
+	Auth    AuthConfig
+}
+
+// AuthConfig holds authentication related configuration
+type AuthConfig struct {
+	AccessTokenSecret  string
+	RefreshTokenSecret string
+	AccessTokenExpiry  int // in minutes
+	RefreshTokenExpiry int // in hours
+	Issuer            string
 }
 
 type ServerConfig struct {
@@ -53,6 +63,13 @@ func Load() (*Config, error) {
 			Password: GetEnv("DB_PASSWORD", "120579"),
 			Name:     GetEnv("DB_NAME", "postgres"),
 			SSLMode:  GetEnv("DB_SSLMODE", "disable"),
+		},
+		Auth: AuthConfig{
+			AccessTokenSecret:  GetEnv("ACCESS_TOKEN_SECRET", "your-default-access-token-secret-key-32-chars-long"),
+			RefreshTokenSecret: GetEnv("REFRESH_TOKEN_SECRET", "your-default-refresh-token-secret-key-32-chars-long"),
+			AccessTokenExpiry:  15,  // 15 minutes
+			RefreshTokenExpiry: 168, // 7 days in hours
+			Issuer:            "base-code-go-gin-clean",
 		},
 		Tracing: TracingConfig{
 			Enabled:     GetEnv("TRACING_ENABLED", "false") == "true",

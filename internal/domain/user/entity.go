@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
@@ -40,4 +41,19 @@ func (u *User) ToResponse() *UserResponse {
 // TableName specifies the table name for the User model
 func (User) TableName() string {
 	return "users"
+}
+
+// HashPassword hashes the user's password with bcrypt
+func (u *User) HashPassword(password string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	u.Password = string(hashedPassword)
+	return nil
+}
+
+// CheckPassword checks if the provided password matches the hashed password
+func (u *User) CheckPassword(password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
 }

@@ -6,6 +6,7 @@ import (
 
 	"base-code-go-gin-clean/internal/domain/user"
 	svc "base-code-go-gin-clean/internal/service"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,6 +22,19 @@ func (m *mockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.U
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*user.User), args.Error(1)
+}
+
+func (m *mockUserRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
+	args := m.Called(ctx, email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*user.User), args.Error(1)
+}
+
+func (m *mockUserRepository) Create(ctx context.Context, user *user.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
 }
 
 func (m *mockUserRepository) On(methodName string, arguments ...interface{}) *mock.Call {

@@ -28,13 +28,13 @@ func TestServer(t *testing.T) {
 	log := newTestLogger()
 
 	t.Run("new server", func(t *testing.T) {
-		srv := server.New(cfg, log)
+		srv := server.New(cfg, log, &server.ServerOptions{})
 		assert.NotNil(t, srv)
 	})
 
 	t.Run("start server", func(t *testing.T) {
 		// Create a test server with a simple handler
-		srv := server.New(cfg, log)
+		srv := server.New(cfg, log, &server.ServerOptions{})
 		assert.NotNil(t, srv)
 
 		// Create a channel to signal when server is ready
@@ -64,7 +64,9 @@ func TestServer(t *testing.T) {
 		mockUserSvc := new(mocks.UserService)
 		userHandler := user.NewUserHandler(mockUserSvc)
 
-		srv := server.New(cfg, log, server.WithUserHandler(userHandler))
+		srv := server.New(cfg, log, &server.ServerOptions{
+			UserHandler: userHandler,
+		})
 		assert.NotNil(t, srv)
 
 		// Test the router directly
@@ -76,7 +78,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("swagger docs available", func(t *testing.T) {
-		srv := server.New(cfg, log)
+		srv := server.New(cfg, log, &server.ServerOptions{})
 		server := httptest.NewServer(srv.GetRouter())
 		defer server.Close()
 

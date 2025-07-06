@@ -1,6 +1,64 @@
 basePath: /api/v1
 definitions:
-  base-code-go-gin-clean_internal_handler_user.UserResponse:
+  dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.LoginResponse:
+    properties:
+      token:
+        $ref: '#/definitions/dto.TokenResponse'
+      user:
+        $ref: '#/definitions/dto.UserInfo'
+    type: object
+  dto.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  dto.RegisterResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+    type: object
+  dto.UserInfo:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.UserResponse:
     properties:
       created_at:
         type: string
@@ -70,6 +128,129 @@ info:
   title: Base Code Go Gin Clean API
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password. Returns user details
+        and sets HTTP-only cookies with access and refresh tokens.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.LoginResponse'
+              type: object
+        "400":
+          description: 'Bad Request: Invalid input format'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: 'Unauthorized: Invalid email or password'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: 'Internal Server Error: Failed to process login'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Authenticate a user
+      tags:
+      - Authentication
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout user by clearing authentication cookies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+      summary: Logout user
+      tags:
+      - Authentication
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh access token using a refresh token from HTTP-only cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token refreshed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.TokenResponse'
+              type: object
+        "401":
+          description: 'Unauthorized: Invalid or expired refresh token'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: 'Internal Server Error: Failed to refresh token'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - Authentication
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with name, email, and password. Password must
+        be at least 8 characters long.
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RegisterResponse'
+              type: object
+        "400":
+          description: 'Bad Request: Invalid input format or validation failed'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "409":
+          description: 'Conflict: Email already exists'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: 'Internal Server Error: Failed to process registration'
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - Authentication
   /email/send:
     post:
       consumes:
@@ -147,7 +328,7 @@ paths:
             - $ref: '#/definitions/handler.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/base-code-go-gin-clean_internal_handler_user.UserResponse'
+                  $ref: '#/definitions/dto.UserResponse'
               type: object
         "400":
           description: 'Bad Request: Invalid user ID'

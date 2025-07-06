@@ -28,7 +28,11 @@ require (
 	google.golang.org/grpc v1.69.0-dev // indirect
 )
 
-require github.com/google/wire v0.6.0
+require (
+	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/google/wire v0.6.0
+	golang.org/x/crypto v0.39.0
+)
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
@@ -79,7 +83,6 @@ require (
 	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/arch v0.18.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.26.0 // indirect

@@ -6,6 +6,8 @@ package wire
 import (
 	"base-code-go-gin-clean/internal/config"
 	"base-code-go-gin-clean/internal/handler"
+	"base-code-go-gin-clean/internal/handler/auth"
+	"base-code-go-gin-clean/internal/pkg/token"
 	"base-code-go-gin-clean/internal/repository"
 	"base-code-go-gin-clean/internal/server"
 	"base-code-go-gin-clean/internal/service"
@@ -26,37 +28,87 @@ func ProvideEnv(cfg *config.Config) string {
 // ProvideServerOptions assembles all server options (handlers)
 func ProvideServerOptions(
 	userHandler *handler.UserHandler,
+	authHandler *auth.AuthHandler,
 	emailHandler *handler.EmailHandler,
-) []server.Option {
-	return []server.Option{
-		server.WithUserHandler(userHandler),
-		server.WithEmailHandler(emailHandler),
+	tokenConfig *config.TokenConfig,
+) *server.ServerOptions {
+	return &server.ServerOptions{
+		UserHandler:  userHandler,
+		AuthHandler:  authHandler,
+		EmailHandler: emailHandler,
+		TokenConfig:  tokenConfig,
 	}
 }
 
-func InitializeServer() (*server.Server, error) {
+// TokenConfigSet provides the token configuration
+var TokenConfigSet = wire.NewSet(
+	config.NewTokenConfig,
+)
+
+// TokenServiceSet provides the token service with its dependencies
+var TokenServiceSet = wire.NewSet(
+	token.NewTokenService,
+	TokenConfigSet,
+)
+
+// AuthServiceSet is a Wire provider set that provides the auth service with its dependencies
+var AuthServiceSet = wire.NewSet(
+	service.NewAuthService,
+	TokenServiceSet,
+)
+
+// HandlerSet is a Wire provider set that provides all handlers
+var HandlerSet = wire.NewSet(
+	handler.NewUserHandler,
+	handler.NewEmailHandler,
+	auth.NewAuthHandler,
+	ProvideEmailHandler,
+)
+
+// ServiceSet is a Wire provider set that provides all services
+var ServiceSet = wire.NewSet(
+	service.NewUserService,
+	ProvideEmailService,
+	AuthServiceSet,
+)
+
+// RepositorySet is a Wire provider set that provides all repositories
+var RepositorySet = wire.NewSet(
+	repository.NewUserRepository,
+)
+
+// InitializeServer initializes the application server with all dependencies
+func InitializeServer() (*server.Server, func(), error) {
 	wire.Build(
-		// Core
+		// Core providers
 		ProvideConfig,
 		ProvideEnv,
 		ProvideDB,
 		ProvideBunDB,
 		logger.New,
 
-		// Repository
+		// Configuration
+		config.NewTokenConfig,
+
+		// Repositories
 		repository.NewUserRepository,
 
-		// Service
+		// Services
 		service.NewUserService,
-		service.NewEmailService,
+		ProvideTokenService,
+		service.NewAuthService,
+		ProvideEmailService,
 
-		// Handler
+		// Handlers
 		handler.NewUserHandler,
-		handler.NewEmailHandler,
+		ProvideEmailHandler,
+		auth.NewAuthHandler,
 
-		// Server options + server
-		ProvideServerOptions,
+		// Server options
+		wire.Struct(new(server.ServerOptions), "*"),
+
+		// Server
 		server.New,
 	)
-	return nil, nil
+	return nil, nil, nil // This will be replaced by Wire
 }

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"base-code-go-gin-clean/internal/handler/user/dto"
 	"base-code-go-gin-clean/internal/pkg/http"
 	"base-code-go-gin-clean/internal/service"
 
@@ -24,7 +25,7 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 // @Accept json
 // @Produce json
 // @Param id path string true "User ID"
-// @Success 200 {object} handler.SuccessResponse{data=UserResponse} "Success response with user data"
+// @Success 200 {object} handler.SuccessResponse{data=dto.UserResponse} "Success response with user data"
 // @Failure 400 {object} handler.ErrorResponse "Bad Request: Invalid user ID"
 // @Failure 401 {object} handler.ErrorResponse "Unauthorized: Authentication required"
 // @Failure 403 {object} handler.ErrorResponse "Forbidden: Insufficient permissions"
@@ -44,5 +45,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	http.Success(c, userResponse)
+	// Map domain model to DTO
+	response := dto.NewUserResponse(userResponse)
+	http.Success(c, response)
 }

@@ -31,3 +31,24 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User,
 	}
 	return user, nil
 }
+
+func (r *userRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
+	user := new(user.User)
+	err := r.db.NewSelect().
+		Model(user).
+		Where("email = ?", email).
+		Scan(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (r *userRepository) Create(ctx context.Context, user *user.User) error {
+	_, err := r.db.NewInsert().
+		Model(user).
+		Exec(ctx)
+
+	return err
+}
