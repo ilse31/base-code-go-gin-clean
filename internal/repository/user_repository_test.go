@@ -19,13 +19,19 @@ func TestUserRepository_GetByID(t *testing.T) {
 	repo := repo.NewUserRepository(db)
 
 	t.Run("success", func(t *testing.T) {
-		// Create a test user
+		// Create a unique test user for this test case
 		testUser := &user.User{
 			ID:       uuid.New(),
-			Email:    "test@example.com",
+			Email:    "test_" + uuid.New().String() + "@example.com",
 			Name:     "Test User",
 			Password: "password",
 		}
+		
+		// Clean up after the test
+		defer func() {
+			_, _ = db.NewDelete().Model(testUser).Where("id = ?", testUser.ID).Exec(context.Background())
+		}()
+
 		_, err := db.NewInsert().Model(testUser).Exec(context.Background())
 		assert.NoError(t, err)
 

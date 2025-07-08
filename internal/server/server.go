@@ -51,6 +51,12 @@ func New(cfg *config.Config, log *slog.Logger, opts *ServerOptions) *Server {
 
 	// Setup server
 	srv.setupMiddleware()
+
+	// Setup database middleware if DB is provided
+	if options.DB != nil {
+		srv.setupDatabaseMiddleware(options.DB)
+	}
+
 	srv.setupRoutes(options)
 
 	return srv

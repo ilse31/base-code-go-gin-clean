@@ -5,15 +5,17 @@ import (
 	"base-code-go-gin-clean/internal/handler"
 	"base-code-go-gin-clean/internal/handler/auth"
 	emailHandler "base-code-go-gin-clean/internal/handler/email"
+	"github.com/uptrace/bun"
 )
 
 // ServerOptions contains options for creating a new Server
+
 type ServerOptions struct {
 	UserHandler  *handler.UserHandler
 	AuthHandler  *auth.AuthHandler
 	EmailHandler *emailHandler.EmailHandler
 	TokenConfig  *config.TokenConfig
-	// Add other handlers as needed
+	DB           *bun.DB // Add database connection to options
 }
 
 // Option configures how we set up the server
