@@ -12,6 +12,7 @@ import (
 	"base-code-go-gin-clean/internal/config"
 
 	"github.com/gin-gonic/gin"
+	"github.com/uptrace/bun"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -23,6 +24,7 @@ type Server struct {
 	logger        *slog.Logger
 	server        *http.Server
 	tracerCleanup func() // Function to clean up tracer resources
+	db            *bun.DB // Database connection
 }
 
 // New creates a new Server instance
@@ -48,6 +50,7 @@ func New(cfg *config.Config, log *slog.Logger, opts *ServerOptions) *Server {
 		router: router,
 		config: cfg,
 		logger: log,
+		db:     options.DB, // Store the database connection
 	}
 
 	// Setup server

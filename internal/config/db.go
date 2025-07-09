@@ -42,6 +42,11 @@ func NewDB(cfg *Config) (*DB, error) {
 		)
 	}
 
+	// Set the search path to include both public and httplog schemas
+	if _, err := db.Exec("SET search_path TO public, httplog"); err != nil {
+		return nil, fmt.Errorf("failed to set search_path: %v", err)
+	}
+
 	// Test the connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

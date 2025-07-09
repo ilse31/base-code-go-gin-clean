@@ -8,7 +8,6 @@ import (
 	"base-code-go-gin-clean/internal/pkg/telemetry"
 
 	"github.com/gin-gonic/gin"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 // HealthHandler handles health-related HTTP requests
@@ -29,14 +28,8 @@ func NewHealthHandler() *HealthHandler {
 // @Router /health [get]
 func (h *HealthHandler) HealthCheck(c *gin.Context) {
 	// Create a new span for the health check
-	ctx, span := telemetry.StartSpan(c.Request.Context(), "HealthCheck")
-	defer telemetry.EndSpan(span, nil)
-
-	// Add custom attributes to the span
-	span.SetAttributes(
-		attribute.String("health.check.type", "liveness"),
-		attribute.String("service.version", "1.0.0"),
-	)
+	ctx, span := telemetry.Start(c.Request.Context())
+	defer span.End()
 
 	// Simulate some work with a child span
 	h.performHealthChecks(ctx)
@@ -50,27 +43,27 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 // performHealthChecks simulates performing health checks with its own span
 func (h *HealthHandler) performHealthChecks(ctx context.Context) {
 	// Create a child span for the health checks
-	ctx, span := telemetry.StartSpan(ctx, "performHealthChecks")
-	defer telemetry.EndSpan(span, nil)
+	ctx, span := telemetry.Start(ctx)
+	defer span.End()
 
 	// Simulate checking database connection
 	{
-		_, dbSpan := telemetry.StartSpan(ctx, "checkDatabase")
+		_, dbSpan := telemetry.Start(ctx)
 		time.Sleep(50 * time.Millisecond) // Simulate database check
-		telemetry.EndSpan(dbSpan, nil)
+		dbSpan.End()
 	}
 
 	// Simulate checking cache
 	{
-		_, cacheSpan := telemetry.StartSpan(ctx, "checkCache")
+		_, cacheSpan := telemetry.Start(ctx)
 		time.Sleep(30 * time.Millisecond) // Simulate cache check
-		telemetry.EndSpan(cacheSpan, nil)
+		cacheSpan.End()
 	}
 
 	// Simulate checking external service
 	{
-		_, externalSpan := telemetry.StartSpan(ctx, "checkExternalService")
+		_, externalSpan := telemetry.Start(ctx)
 		time.Sleep(70 * time.Millisecond) // Simulate external service check
-		telemetry.EndSpan(externalSpan, nil)
+		externalSpan.End()
 	}
 }

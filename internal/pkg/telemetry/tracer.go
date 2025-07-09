@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -56,12 +57,12 @@ func InitTracer(serviceName, jaegerURL string) (func(), error) {
 	return func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		
+
 		// Force flush any remaining spans
 		if err := tp.ForceFlush(ctx); err != nil {
 			log.Printf("failed to flush tracer: %v", err)
 		}
-		
+
 		// Shutdown the tracer provider
 		if err := tp.Shutdown(ctx); err != nil {
 			log.Printf("failed to shutdown tracer provider: %v", err)
@@ -70,28 +71,32 @@ func InitTracer(serviceName, jaegerURL string) (func(), error) {
 	}, nil
 }
 
-// NewSpan starts a new span with the given name and context
-func NewSpan(ctx context.Context, name string) (context.Context, trace.Span) {
-	return otel.Tracer("gin-server").Start(ctx, name)
-}
-
 // SpanFromContext returns the span from the context if it exists
 func SpanFromContext(ctx context.Context) trace.Span {
 	return trace.SpanFromContext(ctx)
 }
 
-// StartSpan starts a new span with the given name and returns a context with the span
-func StartSpan(ctx context.Context, name string) (context.Context, trace.Span) {
-	return otel.Tracer("gin-server").Start(ctx, name)
-}
-
-// EndSpan ends the span with the given error (if any)
-func EndSpan(span trace.Span, err error) {
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-	} else {
-		span.SetStatus(codes.Ok, "")
+// Start starts a new span with the name derived from the caller's function name.
+// It automatically extracts the package and function name to create a meaningful span name.
+func Start(ctx context.Context) (context.Context, trace.Span) {
+	// Get the caller's function name
+	pc, _, _, ok := runtime.Caller(1)
+	if !ok {
+		// If we can't get the caller info, use a generic name
+		return otel.Tracer("gin-server").Start(ctx, "unknown_operation")
 	}
-	span.End()
+
+	// Get the function name
+	funcName := runtime.FuncForPC(pc).Name()
+	parts := strings.Split(funcName, ".")
+
+	// Use the last part of the function name as the operation name
+	operation := parts[len(parts)-1]
+
+	// Clean up the operation name (remove package names, etc.)
+	operation = strings.TrimSuffix(operation, "-fm") // Remove method receiver suffix if present
+	operation = strings.TrimPrefix(operation, "(*")
+	operation = strings.TrimSuffix(operation, ")")
+
+	return otel.Tracer("gin-server").Start(ctx, operation)
 }

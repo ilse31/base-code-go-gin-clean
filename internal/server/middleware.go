@@ -4,6 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
 
+	domainhttplog "base-code-go-gin-clean/internal/domain/httplog"
+	"base-code-go-gin-clean/internal/pkg/httplog"
 	"base-code-go-gin-clean/internal/pkg/telemetry"
 	"base-code-go-gin-clean/pkg/dbutils"
 	"base-code-go-gin-clean/pkg/middleware"
@@ -27,7 +29,7 @@ func (s *Server) setupMiddleware() {
 		}
 	}
 
-	// Request ID middleware for tracing
+	// Request ID middleware
 	s.router.Use(middleware.RequestID())
 
 	// Logger middleware
@@ -44,6 +46,23 @@ func (s *Server) setupMiddleware() {
 
 	// Rate limiting
 	s.router.Use(middleware.RateLimitMiddleware())
+
+	// Only set up HTTP log middleware if we have a database connection
+	if s.db != nil {
+		httpLogRepo := domainhttplog.NewRepository(s.db)
+		httpLogService := domainhttplog.NewService(httpLogRepo)
+
+		s.router.Use(httplog.Middleware(httplog.Config{
+			Service:             httpLogService,
+			SkipPaths:           []string{"/health", "/metrics"},
+			SkipHeaders:         []string{"Authorization", "Cookie"},
+			SkipBodyMethods:     map[string]bool{"GET": true, "HEAD": true, "OPTIONS": true},
+			MaxBodySize:         1024 * 1024,
+			IncludeResponseBody: true,
+		}))
+	} else {
+		s.logger.Warn("No database connection available, HTTP logging will be disabled")
+	}
 }
 
 // setupDatabaseMiddleware adds database-related middleware to the router

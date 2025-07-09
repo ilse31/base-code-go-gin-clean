@@ -51,7 +51,7 @@ func Middleware(serviceName string) gin.HandlerFunc {
 		}
 
 		// Create a new context with the span
-		ctx, span := tracer.Start(
+		_, span := tracer.Start(
 			ctx,
 			spanName,
 			trace.WithSpanKind(trace.SpanKindServer),
@@ -116,8 +116,8 @@ func httpStatusToOtelCode(code int) codes.Code {
 type responseWriter struct {
 	gin.ResponseWriter
 	startTime time.Time
-	size   int
-	status int
+	size      int
+	status    int
 }
 
 // WriteHeader captures the status code and writes it to the response
