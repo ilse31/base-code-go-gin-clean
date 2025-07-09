@@ -34,9 +34,11 @@ COPY --from=builder /app/main .
 # Copy environment file (if exists)
 COPY .env* ./
 
-# Copy templates and static files (if any)
-COPY templates ./templates
-COPY static ./static
+# Create target directory for email templates
+RUN mkdir -p /app/internal/email/templates
+
+# Copy email templates
+COPY internal/email/templates/ /app/internal/email/templates/
 
 # Expose the port the app runs on
 EXPOSE 8080

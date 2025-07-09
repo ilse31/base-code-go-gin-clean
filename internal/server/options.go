@@ -5,7 +5,9 @@ import (
 	"base-code-go-gin-clean/internal/handler"
 	"base-code-go-gin-clean/internal/handler/auth"
 	emailHandler "base-code-go-gin-clean/internal/handler/email"
+	"base-code-go-gin-clean/internal/pkg/redis"
 	"github.com/uptrace/bun"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 // ServerOptions contains options for creating a new Server
@@ -16,6 +18,8 @@ type ServerOptions struct {
 	EmailHandler *emailHandler.EmailHandler
 	TokenConfig  *config.TokenConfig
 	DB           *bun.DB // Add database connection to options
+	RedisRepo    redis.Repository // Add Redis repository to options
+	TracerProvider *trace.TracerProvider // Add TracerProvider for distributed tracing
 }
 
 // Option configures how we set up the server
@@ -53,5 +57,19 @@ func WithAuthHandler(h *auth.AuthHandler) Option {
 func WithTokenConfig(cfg *config.TokenConfig) Option {
 	return func(opts *ServerOptions) {
 		opts.TokenConfig = cfg
+	}
+}
+
+// WithRedisRepo is an option to set the Redis repository
+func WithRedisRepo(repo redis.Repository) Option {
+	return func(opts *ServerOptions) {
+		opts.RedisRepo = repo
+	}
+}
+
+// WithTracerProvider is an option to set the TracerProvider for distributed tracing
+func WithTracerProvider(tp *trace.TracerProvider) Option {
+	return func(opts *ServerOptions) {
+		opts.TracerProvider = tp
 	}
 }

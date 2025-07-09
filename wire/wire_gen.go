@@ -10,13 +10,21 @@ import (
 	"base-code-go-gin-clean/internal/config"
 	"base-code-go-gin-clean/internal/handler"
 	"base-code-go-gin-clean/internal/handler/auth"
+	"base-code-go-gin-clean/internal/pkg/redis"
+	"base-code-go-gin-clean/internal/pkg/telemetry"
 	"base-code-go-gin-clean/internal/pkg/token"
 	"base-code-go-gin-clean/internal/repository"
 	"base-code-go-gin-clean/internal/server"
 	"base-code-go-gin-clean/internal/service"
 	"base-code-go-gin-clean/pkg/logger"
+	"context"
+	"fmt"
 	"github.com/google/wire"
 	"github.com/uptrace/bun"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"log"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -35,7 +43,13 @@ func InitializeServer() (*server.Server, func(), error) {
 	}
 	bunDB := ProvideBunDB(db)
 	userRepository := repository.NewUserRepository(bunDB)
-	userService := service.NewUserService(userRepository)
+	client, err := ProvideRedisClient(configConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	redisRepository := ProvideRedisRepository(client)
+	userServiceConfig := ProvideUserServiceConfig(userRepository, redisRepository)
+	userService := service.NewUserService(userServiceConfig)
 	userHandler := handler.NewUserHandler(userService)
 	tokenService, err := ProvideTokenService(configConfig)
 	if err != nil {
@@ -46,14 +60,22 @@ func InitializeServer() (*server.Server, func(), error) {
 	emailService := ProvideEmailService(configConfig)
 	emailHandler := ProvideEmailHandler(emailService)
 	tokenConfig := config.NewTokenConfig(configConfig)
+	tracerProvider, cleanup, err := ProvideTracerProvider(configConfig)
+	if err != nil {
+		return nil, nil, err
+	}
 	serverOptions := &server.ServerOptions{
-		UserHandler:  userHandler,
-		AuthHandler:  authHandler,
-		EmailHandler: emailHandler,
-		TokenConfig:  tokenConfig,
+		UserHandler:    userHandler,
+		AuthHandler:    authHandler,
+		EmailHandler:   emailHandler,
+		TokenConfig:    tokenConfig,
+		DB:             bunDB,
+		RedisRepo:      redisRepository,
+		TracerProvider: tracerProvider,
 	}
 	serverServer := server.New(configConfig, slogLogger, serverOptions)
 	return serverServer, func() {
+		cleanup()
 	}, nil
 }
 
@@ -73,12 +95,16 @@ func ProvideServerOptions(
 	authHandler *auth.AuthHandler,
 	emailHandler *handler.EmailHandler,
 	tokenConfig *config.TokenConfig,
+	db *bun.DB,
+	redisRepo redis.Repository,
 ) *server.ServerOptions {
 	return &server.ServerOptions{
 		UserHandler:  userHandler,
 		AuthHandler:  authHandler,
 		EmailHandler: emailHandler,
 		TokenConfig:  tokenConfig,
+		DB:           db,
+		RedisRepo:    redisRepo,
 	}
 }
 
@@ -91,13 +117,47 @@ var TokenServiceSet = wire.NewSet(token.NewTokenService, TokenConfigSet)
 // AuthServiceSet is a Wire provider set that provides the auth service with its dependencies
 var AuthServiceSet = wire.NewSet(service.NewAuthService, TokenServiceSet)
 
+// RedisSet is a Wire provider set that provides Redis client and repository
+var RedisSet = wire.NewSet(
+	ProvideRedisClient,
+	ProvideRedisRepository,
+)
+
 // HandlerSet is a Wire provider set that provides all handlers
 var HandlerSet = wire.NewSet(handler.NewUserHandler, handler.NewEmailHandler, auth.NewAuthHandler, ProvideEmailHandler)
 
 // ServiceSet is a Wire provider set that provides all services
+// TelemetrySet provides telemetry-related dependencies
+var TelemetrySet = wire.NewSet(
+	ProvideTracerProvider,
+)
+
+// ProvideTracerProvider creates a new TracerProvider
+func ProvideTracerProvider(cfg *config.Config) (*trace.TracerProvider, func(), error) {
+	cleanup, err := telemetry.InitTracer(cfg.Tracing.ServiceName, cfg.Tracing.DSN)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to initialize tracer: %w", err)
+	}
+
+	tp := otel.GetTracerProvider()
+
+	return tp.(*trace.TracerProvider), func() {
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tp.(*trace.TracerProvider).Shutdown(ctx); err != nil {
+			log.Printf("Error shutting down tracer provider: %v", err)
+		}
+		if cleanup != nil {
+			cleanup()
+		}
+	}, nil
+}
+
 var ServiceSet = wire.NewSet(service.NewUserService, ProvideEmailService,
+	ProvideUserServiceConfig,
 	AuthServiceSet,
 )
 
 // RepositorySet is a Wire provider set that provides all repositories
-var RepositorySet = wire.NewSet(repository.NewUserRepository)
+var RepositorySet = wire.NewSet(repository.NewUserRepository, RedisSet)

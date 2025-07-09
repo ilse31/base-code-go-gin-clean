@@ -2,6 +2,7 @@ package handler
 
 import (
 	emailDomain "base-code-go-gin-clean/internal/domain/email"
+	"base-code-go-gin-clean/internal/handler/auth"
 	email "base-code-go-gin-clean/internal/handler/email"
 	"base-code-go-gin-clean/internal/handler/health"
 	"base-code-go-gin-clean/internal/handler/roles"
@@ -39,4 +40,12 @@ type EmailHandler = email.EmailHandler
 // NewEmailHandler creates a new EmailHandler
 func NewEmailHandler(emailService emailDomain.EmailService) *EmailHandler {
 	return email.NewEmailHandler(emailService)
+}
+
+// AuthHandler is an alias for auth.AuthHandler
+type AuthHandler = auth.AuthHandler
+
+// NewAuthHandler creates a new AuthHandler
+func NewAuthHandler(authService service.AuthService) *AuthHandler {
+	return auth.NewAuthHandler(authService)
 }

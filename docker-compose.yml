@@ -15,11 +15,33 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=base_code_go_gin_clean
-      - REDIS_ADDR=redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - REDIS_PASSWORD=
+      - TRACING_ENABLED=true
+      - SERVICE_NAME=base-code-go-gin-clean
+      - UPTRACE_DSN=http://jaeger:14268/api/traces
     depends_on:
       - postgres
       - redis
+      - jaeger
+    networks:
+      - app-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"    # UI
+      - "4317:4317"      # OTLP gRPC
+      - "4318:4318"      # OTLP HTTP
+      - "14268:14268"    # Jaeger HTTP
+      - "14250:14250"    # Jaeger gRPC
+      - "9411:9411"      # Zipkin
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
     networks:
       - app-network
 

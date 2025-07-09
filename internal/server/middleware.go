@@ -1,15 +1,32 @@
 package server
 
 import (
-	"base-code-go-gin-clean/pkg/dbutils"
-	"base-code-go-gin-clean/pkg/middleware"
-
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
+
+	"base-code-go-gin-clean/internal/pkg/telemetry"
+	"base-code-go-gin-clean/pkg/dbutils"
+	"base-code-go-gin-clean/pkg/middleware"
 )
 
 // setupMiddleware configures global middleware for the server
 func (s *Server) setupMiddleware() {
+	// Add Jaeger tracing middleware if configured
+	if s.config.Tracing.Enabled && s.config.Tracing.DSN != "" {
+		cleanup, err := telemetry.InitTracer(
+			s.config.Tracing.ServiceName,
+			s.config.Tracing.DSN,
+		)
+		if err != nil {
+			s.logger.Error("failed to initialize tracer", "error", err)
+		} else {
+			// Store the cleanup function to be called on server shutdown
+			s.tracerCleanup = cleanup
+			// Add tracing middleware
+			s.router.Use(telemetry.Middleware(s.config.Tracing.ServiceName))
+		}
+	}
+
 	// Request ID middleware for tracing
 	s.router.Use(middleware.RequestID())
 

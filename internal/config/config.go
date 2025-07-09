@@ -6,6 +6,7 @@ import "fmt"
 type Config struct {
 	Server  ServerConfig
 	DB      DatabaseConfig
+	Redis   RedisConfig
 	Tracing TracingConfig
 	Email   EmailConfig
 	Auth    AuthConfig
@@ -17,7 +18,7 @@ type AuthConfig struct {
 	RefreshTokenSecret string
 	AccessTokenExpiry  int // in minutes
 	RefreshTokenExpiry int // in hours
-	Issuer            string
+	Issuer             string
 }
 
 type ServerConfig struct {
@@ -64,12 +65,18 @@ func Load() (*Config, error) {
 			Name:     GetEnv("DB_NAME", "postgres"),
 			SSLMode:  GetEnv("DB_SSLMODE", "disable"),
 		},
+		Redis: RedisConfig{
+			Host:     GetEnv("REDIS_HOST", "localhost"),
+			Port:     GetEnv("REDIS_PORT", "6379"),
+			Password: GetEnv("REDIS_PASSWORD", ""),
+			DB:       0, // Default Redis database
+		},
 		Auth: AuthConfig{
 			AccessTokenSecret:  GetEnv("ACCESS_TOKEN_SECRET", "your-default-access-token-secret-key-32-chars-long"),
 			RefreshTokenSecret: GetEnv("REFRESH_TOKEN_SECRET", "your-default-refresh-token-secret-key-32-chars-long"),
 			AccessTokenExpiry:  15,  // 15 minutes
 			RefreshTokenExpiry: 168, // 7 days in hours
-			Issuer:            "base-code-go-gin-clean",
+			Issuer:             "base-code-go-gin-clean",
 		},
 		Tracing: TracingConfig{
 			Enabled:     GetEnv("TRACING_ENABLED", "false") == "true",
