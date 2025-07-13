@@ -65,7 +65,8 @@ func (s *userService) GetUserByID(ctx context.Context, idStr string) (*user.User
 	defer span.End()
 
 	// Validate UUID format
-	if _, err := uuid.Parse(idStr); err != nil {
+	userID, err := uuid.Parse(idStr)
+	if err != nil {
 		err = fmt.Errorf("invalid user ID format: %v", err)
 		span.RecordError(err)
 		return nil, err
@@ -76,14 +77,6 @@ func (s *userService) GetUserByID(ctx context.Context, idStr string) (*user.User
 	cachedUser, err := s.getUserFromCache(ctx, cacheKey)
 	if err == nil && cachedUser != nil {
 		return cachedUser, nil
-	}
-
-	// Parse UUID for repository call
-	userID, err := uuid.Parse(idStr)
-	if err != nil {
-		err = fmt.Errorf("invalid user ID format: %v", err)
-		span.RecordError(err)
-		return nil, err
 	}
 
 	// If not in cache, get from repository

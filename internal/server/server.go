@@ -4,17 +4,14 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"base-code-go-gin-clean/internal/config"
 
 	"github.com/gin-gonic/gin"
-	"github.com/uptrace/bun"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/uptrace/bun"
 )
 
 // Server represents the HTTP server
@@ -23,7 +20,7 @@ type Server struct {
 	config        *config.Config
 	logger        *slog.Logger
 	server        *http.Server
-	tracerCleanup func() // Function to clean up tracer resources
+	tracerCleanup func()  // Function to clean up tracer resources
 	db            *bun.DB // Database connection
 }
 
@@ -54,20 +51,15 @@ func New(cfg *config.Config, log *slog.Logger, opts *ServerOptions) *Server {
 	}
 
 	// Setup server
-	srv.setupMiddleware()
-
-	// Setup database middleware if DB is provided
-	if options.DB != nil {
-		srv.setupDatabaseMiddleware(options.DB)
-	}
-
+	srv.setupMiddlewares(options.DB)
 	srv.setupRoutes(options)
 
 	return srv
 }
 
 // Start starts the HTTP server
-func (s *Server) Start() error {
+// Start runs the HTTP server and supports graceful shutdown via context
+func (s *Server) Start(ctx context.Context) error {
 	s.server = &http.Server{
 		Addr:         ":" + s.config.Server.Port,
 		Handler:      s.router,
@@ -76,45 +68,37 @@ func (s *Server) Start() error {
 		IdleTimeout:  15 * time.Second,
 	}
 
-	// Start server in goroutine
+	// Run server in goroutine
+	serverErrChan := make(chan error, 1)
 	go func() {
 		s.logger.Info("Server starting", "port", s.config.Server.Port)
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			s.logger.Error("Server error", "error", err)
+			serverErrChan <- err
 		}
+		close(serverErrChan)
 	}()
 
-	return s.handleShutdown()
-}
+	// Shutdown when context is done
+	<-ctx.Done()
+	s.logger.Info("Shutdown signal received")
 
-// handleShutdown handles graceful shutdown of the server
-func (s *Server) handleShutdown() error {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	// Block until we receive our signal
-	<-quit
-
-	s.logger.Info("Shutting down server...")
-
-	// Create a deadline to wait for
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Call tracer cleanup if it was initialized
+	// Tracer cleanup if applicable
 	if s.tracerCleanup != nil {
 		s.logger.Info("Cleaning up tracer...")
 		s.tracerCleanup()
 	}
 
-	// Shutdown the server
-	if err := s.server.Shutdown(ctx); err != nil {
-		s.logger.Error("Server forced to shutdown", "error", err)
+	err := s.server.Shutdown(shutdownCtx)
+	if err != nil {
+		s.logger.Error("Forced to shutdown", "error", err)
 		return err
 	}
 
 	s.logger.Info("Server exited gracefully")
-	return nil
+	return <-serverErrChan // if server exited with error
 }
 
 // GetRouter returns the underlying gin.Engine instance

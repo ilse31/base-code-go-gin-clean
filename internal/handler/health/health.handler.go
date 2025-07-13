@@ -2,25 +2,29 @@ package health
 
 import (
 	"context"
-	"time"
 
 	"base-code-go-gin-clean/internal/pkg/http"
 	"base-code-go-gin-clean/internal/pkg/telemetry"
+	"base-code-go-gin-clean/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
 // HealthHandler handles health-related HTTP requests
-type HealthHandler struct{}
+type HealthHandler struct {
+	healthService service.HealthService
+}
 
 // NewHealthHandler creates a new HealthHandler
-func NewHealthHandler() *HealthHandler {
-	return &HealthHandler{}
+func NewHealthHandler(healthService service.HealthService) *HealthHandler {
+	return &HealthHandler{
+		healthService: healthService,
+	}
 }
 
 // HealthCheck handles health check requests
 // @Summary Show the status of server
-// @Description Returns the health status of the API along with version information
+// @Description Returns the health status of the API along with version and database information
 // @Tags health api
 // @Accept json
 // @Produce json
@@ -31,39 +35,29 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 	ctx, span := telemetry.Start(c.Request.Context())
 	defer span.End()
 
-	// Simulate some work with a child span
-	h.performHealthChecks(ctx)
+	dbStatus := h.performDatabaseCheck(ctx)
 
 	http.Success(c, HealthResponse{
-		Status:  "ok",
-		Version: "1.0.0",
+		Status:   "ok",
+		Version:  "1.0.0",
+		Database: dbStatus,
 	})
 }
 
-// performHealthChecks simulates performing health checks with its own span
-func (h *HealthHandler) performHealthChecks(ctx context.Context) {
-	// Create a child span for the health checks
+// performDatabaseCheck performs actual database health check
+func (h *HealthHandler) performDatabaseCheck(ctx context.Context) DatabaseStatus {
 	ctx, span := telemetry.Start(ctx)
 	defer span.End()
 
-	// Simulate checking database connection
-	{
-		_, dbSpan := telemetry.Start(ctx)
-		time.Sleep(50 * time.Millisecond) // Simulate database check
-		dbSpan.End()
+	err := h.healthService.CheckDBHealth(ctx)
+	if err != nil {
+		return DatabaseStatus{
+			Status:  "error",
+			Message: err.Error(),
+		}
 	}
 
-	// Simulate checking cache
-	{
-		_, cacheSpan := telemetry.Start(ctx)
-		time.Sleep(30 * time.Millisecond) // Simulate cache check
-		cacheSpan.End()
-	}
-
-	// Simulate checking external service
-	{
-		_, externalSpan := telemetry.Start(ctx)
-		time.Sleep(70 * time.Millisecond) // Simulate external service check
-		externalSpan.End()
+	return DatabaseStatus{
+		Status: "ok",
 	}
 }

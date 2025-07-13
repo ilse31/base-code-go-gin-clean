@@ -1,11 +1,14 @@
 package server_test
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"base-code-go-gin-clean/internal/config"
 	"base-code-go-gin-clean/internal/handler/user"
@@ -13,6 +16,7 @@ import (
 	"base-code-go-gin-clean/internal/service/mocks"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestServer(t *testing.T) {
@@ -31,37 +35,31 @@ func TestServer(t *testing.T) {
 		srv := server.New(cfg, log, &server.ServerOptions{})
 		assert.NotNil(t, srv)
 	})
-
 	t.Run("start server", func(t *testing.T) {
-		// Create a test server with a simple handler
 		srv := server.New(cfg, log, &server.ServerOptions{})
-		assert.NotNil(t, srv)
 
-		// Create a channel to signal when server is ready
-		serverReady := make(chan bool)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
-		// Start the server in a goroutine
 		go func() {
-			if err := srv.Start(); err != nil && err != http.ErrServerClosed {
-				t.Errorf("Server error: %v", err)
-			}
-			serverReady <- true
+			err := srv.Start(ctx)
+			assert.NoError(t, err)
 		}()
 
-		// Wait for server to be ready
-		<-serverReady
-
-		// Get the server instance and close it
-		httpSrv := srv.GetHTTPServer()
-		assert.NotNil(t, httpSrv, "HTTP server should be initialized after Start()")
-
-		// Stop the server
-		err := httpSrv.Close()
+		// Optionally, send real request to confirm server is up (skip if not needed)
+		time.Sleep(1 * time.Second)
+		resp, err := http.Get("http://localhost:" + cfg.Server.Port + "/swagger/index.html")
 		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("with user handler", func(t *testing.T) {
 		mockUserSvc := new(mocks.UserService)
+
+		mockUserSvc.
+			On("GetUserByID", mock.Anything, "123").
+			Return(nil, fmt.Errorf("invalid user ID format"))
+
 		userHandler := user.NewUserHandler(mockUserSvc)
 
 		srv := server.New(cfg, log, &server.ServerOptions{
@@ -69,8 +67,8 @@ func TestServer(t *testing.T) {
 		})
 		assert.NotNil(t, srv)
 
-		// Test the router directly
-		req := httptest.NewRequest("GET", "/users/123", nil)
+		// Kirim request ke path yang sesuai
+		req := httptest.NewRequest("GET", "/api/v1/users/123", nil)
 		w := httptest.NewRecorder()
 		srv.GetRouter().ServeHTTP(w, req)
 

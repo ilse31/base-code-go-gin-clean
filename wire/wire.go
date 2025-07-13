@@ -66,8 +66,11 @@ var TokenServiceSet = wire.NewSet(
 
 // AuthServiceSet is a Wire provider set that provides the auth service with its dependencies
 var AuthServiceSet = wire.NewSet(
+	ProvideTokenService,
+	ProvideRedisRepository,
 	service.NewAuthService,
 	TokenServiceSet,
+	RedisSet,
 )
 
 // RedisSet is a Wire provider set that provides Redis client and repository
@@ -96,10 +99,10 @@ func ProvideTracerProvider(cfg *config.Config) (*trace.TracerProvider, func(), e
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to initialize tracer: %w", err)
 	}
-	
+
 	// Get the global TracerProvider that was set by InitTracer
 	tp := otel.GetTracerProvider()
-	
+
 	return tp.(*trace.TracerProvider), func() {
 		// Ensure all spans are flushed before shutting down
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

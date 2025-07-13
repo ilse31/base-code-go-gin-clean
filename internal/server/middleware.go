@@ -1,18 +1,25 @@
 package server
 
 import (
+	"context"
+	"time"
+
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
 
 	domainhttplog "base-code-go-gin-clean/internal/domain/httplog"
-	"base-code-go-gin-clean/internal/pkg/httplog"
+	pkghttplog "base-code-go-gin-clean/internal/pkg/httplog"
 	"base-code-go-gin-clean/internal/pkg/telemetry"
 	"base-code-go-gin-clean/pkg/dbutils"
 	"base-code-go-gin-clean/pkg/middleware"
 )
 
-// setupMiddleware configures global middleware for the server
-func (s *Server) setupMiddleware() {
+// setupMiddlewares configures all middleware for the server
+func (s *Server) setupMiddlewares(db *bun.DB) {
+	// Add request size limiting middleware (10MB max)
+	s.router.MaxMultipartMemory = 10 << 20 // 10MB
+
 	// Add Jaeger tracing middleware if configured
 	if s.config.Tracing.Enabled && s.config.Tracing.DSN != "" {
 		cleanup, err := telemetry.InitTracer(
@@ -35,6 +42,9 @@ func (s *Server) setupMiddleware() {
 	// Logger middleware
 	s.router.Use(gin.Logger())
 
+	// Compression middleware
+	s.router.Use(gzip.Gzip(gzip.DefaultCompression))
+
 	// Recovery middleware
 	s.router.Use(gin.Recovery())
 
@@ -47,12 +57,15 @@ func (s *Server) setupMiddleware() {
 	// Rate limiting
 	s.router.Use(middleware.RateLimitMiddleware())
 
+	// Timeout middleware (10 seconds)
+	s.router.Use(TimeoutMiddleware(10 * time.Second))
+
 	// Only set up HTTP log middleware if we have a database connection
 	if s.db != nil {
 		httpLogRepo := domainhttplog.NewRepository(s.db)
 		httpLogService := domainhttplog.NewService(httpLogRepo)
 
-		s.router.Use(httplog.Middleware(httplog.Config{
+		s.router.Use(pkghttplog.Middleware(pkghttplog.Config{
 			Service:             httpLogService,
 			SkipPaths:           []string{"/health", "/metrics"},
 			SkipHeaders:         []string{"Authorization", "Cookie"},
@@ -63,10 +76,7 @@ func (s *Server) setupMiddleware() {
 	} else {
 		s.logger.Warn("No database connection available, HTTP logging will be disabled")
 	}
-}
 
-// setupDatabaseMiddleware adds database-related middleware to the router
-func (s *Server) setupDatabaseMiddleware(db *bun.DB) {
 	// Add database connection to the Gin context
 	s.router.Use(func(c *gin.Context) {
 		c.Set("db_conn", db)
@@ -75,4 +85,19 @@ func (s *Server) setupDatabaseMiddleware(db *bun.DB) {
 
 	// Add transaction middleware
 	s.router.Use(dbutils.TransactionMiddleware(db))
+}
+
+// TimeoutMiddleware creates a middleware that times out requests after specified duration
+func TimeoutMiddleware(timeout time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Create context with timeout
+		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
+		defer cancel()
+
+		// Replace request with timeout context
+		c.Request = c.Request.WithContext(ctx)
+
+		// Continue processing
+		c.Next()
+	}
 }

@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"strings"
 
 	"base-code-go-gin-clean/internal/handler/user/dto"
 	"base-code-go-gin-clean/internal/pkg/http"
@@ -53,8 +54,13 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	// Call service
 	userResponse, err := h.userService.GetUserByID(ctx, id)
 	if err != nil {
-		span.SetAttributes(attribute.String("error.type", "user_not_found"))
-		http.NotFound(c, "User not found")
+		if strings.Contains(err.Error(), "invalid user ID format") {
+			http.BadRequest(c, "Invalid user ID format", nil)
+			span.SetAttributes(attribute.String("error.type", "invalid_user_id_format"))
+		} else {
+			http.NotFound(c, "User not found")
+			span.SetAttributes(attribute.String("error.type", "user_not_found"))
+		}
 		return
 	}
 

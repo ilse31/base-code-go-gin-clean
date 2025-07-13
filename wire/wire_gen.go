@@ -55,7 +55,7 @@ func InitializeServer() (*server.Server, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	authService := service.NewAuthService(userRepository, tokenService)
+	authService := service.NewAuthService(userRepository, tokenService, redisRepository)
 	authHandler := auth.NewAuthHandler(authService)
 	emailService := ProvideEmailService(configConfig)
 	emailHandler := ProvideEmailHandler(emailService)
@@ -115,7 +115,11 @@ var TokenConfigSet = wire.NewSet(config.NewTokenConfig)
 var TokenServiceSet = wire.NewSet(token.NewTokenService, TokenConfigSet)
 
 // AuthServiceSet is a Wire provider set that provides the auth service with its dependencies
-var AuthServiceSet = wire.NewSet(service.NewAuthService, TokenServiceSet)
+var AuthServiceSet = wire.NewSet(
+	ProvideTokenService,
+	ProvideRedisRepository, service.NewAuthService, TokenServiceSet,
+	RedisSet,
+)
 
 // RedisSet is a Wire provider set that provides Redis client and repository
 var RedisSet = wire.NewSet(

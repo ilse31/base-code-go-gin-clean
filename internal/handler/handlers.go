@@ -1,3 +1,5 @@
+// Package handler provides centralized handler types and constructors
+// for the application's HTTP handlers.
 package handler
 
 import (
@@ -30,8 +32,8 @@ func NewRolesHandler() *RolesHandler {
 type HealthHandler = health.HealthHandler
 
 // NewHealthHandler creates a new HealthHandler
-func NewHealthHandler() *HealthHandler {
-	return health.NewHealthHandler()
+func NewHealthHandler(healthService service.HealthService) *HealthHandler {
+	return health.NewHealthHandler(healthService)
 }
 
 // EmailHandler is an alias for email.EmailHandler
