@@ -3,12 +3,11 @@ package service_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"base-code-go-gin-clean/internal/domain/user"
-	svc "base-code-go-gin-clean/internal/service"
+	"base-code-go-gin-clean/internal/service"
 	"base-code-go-gin-clean/test/mocks"
-
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +19,12 @@ func TestAuthService_Register(t *testing.T) {
 	mockRepo := &mocks.MockUserRepository{}
 	mockTokenSvc := &mocks.MockTokenService{}
 	redisRepo := &mocks.MockRedisRepository{}
-	service := svc.NewAuthService(mockRepo, mockTokenSvc, redisRepo)
+	cfg := service.Config{
+		Auth: service.AuthConfig{
+			AccessTokenExpiry: 15,
+		},
+	}
+	service := service.NewAuthService(mockRepo, mockTokenSvc, redisRepo, cfg)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -60,12 +64,41 @@ func TestAuthService_Register(t *testing.T) {
 		assert.Equal(t, "user with this email already exists", err.Error())
 		mockRepo.AssertExpectations(t)
 	})
+
+	t.Run("user already exists", func(t *testing.T) {
+		mockRepo.On("GetByEmail", ctx, "exist@test.com").Return(&user.User{}, nil)
+		_, err := service.Register(ctx, "Test", "exist@test.com", "password")
+		assert.Error(t, err)
+		assert.Equal(t, "user with this email already exists", err.Error())
+	})
+
+	t.Run("password hashing error", func(t *testing.T) {
+		email := "hash123@test.com"
+
+		// Simulasikan bahwa user belum ada
+		mockRepo.On("GetByEmail", ctx, email).Return((*user.User)(nil), nil)
+
+		// Gunakan password yang sangat panjang (atau cara buatan untuk memicu error hashing)
+		invalidPassword := string(make([]byte, 1<<20)) // 1MB string bisa memicu error bcrypt
+
+		_, err := service.Register(ctx, "Test", email, invalidPassword)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to hash password")
+	})
+
 }
+
 func TestAuthService_Login(t *testing.T) {
 	userRepo := &mocks.MockUserRepository{}
 	tokenService := &mocks.MockTokenService{}
 	redisRepo := &mocks.MockRedisRepository{}
-	service := svc.NewAuthService(userRepo, tokenService, redisRepo)
+	cfg := service.Config{
+		Auth: service.AuthConfig{
+			AccessTokenExpiry: 15,
+		},
+	}
+	service := service.NewAuthService(userRepo, tokenService, redisRepo, cfg)
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		email := "test@example.com"
@@ -141,13 +174,27 @@ func TestAuthService_Login(t *testing.T) {
 
 		userRepo.AssertExpectations(t)
 	})
+
+	t.Run("password mismatch", func(t *testing.T) {
+		testUser := &user.User{Password: "$2a$10$hashed"} // Hashed password doesn't match "wrong"
+		userRepo.On("GetByEmail", ctx, "mismatch@test.com").Return(testUser, nil)
+		_, err := service.Login(ctx, "mismatch@test.com", "wrong")
+		assert.Error(t, err)
+		assert.Equal(t, "invalid email or password", err.Error())
+	})
+
 }
 
 func TestAuthService_RefreshToken(t *testing.T) {
 	userRepo := &mocks.MockUserRepository{}
 	tokenService := &mocks.MockTokenService{}
 	redisRepo := &mocks.MockRedisRepository{}
-	service := svc.NewAuthService(userRepo, tokenService, redisRepo)
+	cfg := service.Config{
+		Auth: service.AuthConfig{
+			AccessTokenExpiry: 15,
+		},
+	}
+	service := service.NewAuthService(userRepo, tokenService, redisRepo, cfg)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -178,7 +225,12 @@ func TestAuthService_Logout(t *testing.T) {
 	userRepo := &mocks.MockUserRepository{}
 	tokenService := &mocks.MockTokenService{}
 	redisRepo := &mocks.MockRedisRepository{}
-	service := svc.NewAuthService(userRepo, tokenService, redisRepo)
+	cfg := service.Config{
+		Auth: service.AuthConfig{
+			AccessTokenExpiry: 15,
+		},
+	}
+	service := service.NewAuthService(userRepo, tokenService, redisRepo, cfg)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {

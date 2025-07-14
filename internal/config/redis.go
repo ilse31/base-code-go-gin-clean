@@ -2,14 +2,6 @@ package config
 
 import "fmt"
 
-// RedisConfig holds Redis configuration
-type RedisConfig struct {
-	Host     string
-	Port     string
-	Password string
-	DB       int
-}
-
 // RedisURL returns the Redis connection URL
 func (r *RedisConfig) RedisURL() string {
 	if r.Password != "" {

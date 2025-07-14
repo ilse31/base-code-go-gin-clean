@@ -105,8 +105,18 @@ definitions:
         example: success
         type: string
     type: object
+  health.DatabaseStatus:
+    properties:
+      message:
+        type: string
+      status:
+        example: ok
+        type: string
+    type: object
   health.HealthResponse:
     properties:
+      database:
+        $ref: '#/definitions/health.DatabaseStatus'
       status:
         example: ok
         type: string
@@ -267,19 +277,19 @@ paths:
       - application/json
       responses:
         "200":
-          description: 'message": "Email sent successfully'
+          description: Email sent successfully
           schema:
             additionalProperties:
               type: string
             type: object
         "400":
-          description: 'error": "Bad request'
+          description: Bad request
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error": "Internal server error'
+          description: Internal server error
           schema:
             additionalProperties:
               type: string
@@ -291,7 +301,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Returns the health status of the API along with version information
+      description: Returns the health status of the API along with version and database
+        information
       produces:
       - application/json
       responses:

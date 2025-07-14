@@ -15,7 +15,7 @@ import (
 	"base-code-go-gin-clean/internal/pkg/redis"
 	"base-code-go-gin-clean/internal/pkg/telemetry"
 	"base-code-go-gin-clean/internal/pkg/token"
-	"base-code-go-gin-clean/internal/repository"
+	"base-code-go-gin-clean/internal/repository/user"
 	"base-code-go-gin-clean/internal/server"
 	"base-code-go-gin-clean/internal/service"
 	"base-code-go-gin-clean/pkg/logger"
@@ -66,9 +66,8 @@ var TokenServiceSet = wire.NewSet(
 
 // AuthServiceSet is a Wire provider set that provides the auth service with its dependencies
 var AuthServiceSet = wire.NewSet(
-	ProvideTokenService,
-	ProvideRedisRepository,
 	service.NewAuthService,
+	ProvideServiceConfig,
 	TokenServiceSet,
 	RedisSet,
 )
@@ -116,16 +115,26 @@ func ProvideTracerProvider(cfg *config.Config) (*trace.TracerProvider, func(), e
 	}, nil
 }
 
+// ProvideServiceConfig provides the service configuration
+func ProvideServiceConfig(cfg *config.Config) service.Config {
+	return service.Config{
+		Auth: service.AuthConfig{
+			AccessTokenExpiry: cfg.Auth.AccessTokenExpiry,
+		},
+	}
+}
+
 var ServiceSet = wire.NewSet(
 	service.NewUserService,
 	ProvideEmailService,
 	ProvideUserServiceConfig,
 	AuthServiceSet,
+	ProvideServiceConfig,
 )
 
 // RepositorySet is a Wire provider set that provides all repositories
 var RepositorySet = wire.NewSet(
-	repository.NewUserRepository,
+	user.NewUserRepository,
 	RedisSet,
 )
 
@@ -147,7 +156,7 @@ func InitializeServer() (*server.Server, func(), error) {
 		RedisSet,
 
 		// Repositories
-		repository.NewUserRepository,
+		user.NewUserRepository,
 
 		// Services
 		ProvideUserServiceConfig,
@@ -165,6 +174,7 @@ func InitializeServer() (*server.Server, func(), error) {
 		wire.Struct(new(server.ServerOptions), "*"),
 
 		// Server
+		ProvideServiceConfig, // <--- Tambahkan baris ini
 		server.New,
 	)
 	return nil, nil, nil // This will be replaced by Wire

@@ -35,13 +35,23 @@ type authService struct {
 	userRepo     user.UserRepository
 	tokenService token.TokenService
 	redisRepo    redis.Repository
+	cfg          Config
 }
 
-func NewAuthService(userRepo user.UserRepository, tokenService token.TokenService, redisRepo redis.Repository) AuthService {
+type Config struct {
+	Auth AuthConfig
+}
+
+type AuthConfig struct {
+	AccessTokenExpiry int
+}
+
+func NewAuthService(userRepo user.UserRepository, tokenService token.TokenService, redisRepo redis.Repository, cfg Config) AuthService {
 	return &authService{
 		userRepo:     userRepo,
 		tokenService: tokenService,
 		redisRepo:    redisRepo,
+		cfg:          cfg,
 	}
 }
 
@@ -109,7 +119,7 @@ func (s *authService) Login(ctx context.Context, email, password string) (*Login
 		Token: &TokenResponse{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
-			ExpiresIn:    int64(15 * time.Minute / time.Second), // 15 minutes in seconds
+			ExpiresIn:    int64(s.cfg.Auth.AccessTokenExpiry * 60), // Convert minutes to seconds
 		},
 	}, nil
 }
@@ -141,7 +151,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*T
 	return &TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
-		ExpiresIn:    int64(15 * time.Minute / time.Second),
+		ExpiresIn:    int64(s.cfg.Auth.AccessTokenExpiry * 60),
 	}, nil
 }
 

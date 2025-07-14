@@ -13,7 +13,7 @@ import (
 	"base-code-go-gin-clean/internal/pkg/redis"
 	"base-code-go-gin-clean/internal/pkg/telemetry"
 	"base-code-go-gin-clean/internal/pkg/token"
-	"base-code-go-gin-clean/internal/repository"
+	"base-code-go-gin-clean/internal/repository/user"
 	"base-code-go-gin-clean/internal/server"
 	"base-code-go-gin-clean/internal/service"
 	"base-code-go-gin-clean/pkg/logger"
@@ -42,20 +42,21 @@ func InitializeServer() (*server.Server, func(), error) {
 		return nil, nil, err
 	}
 	bunDB := ProvideBunDB(db)
-	userRepository := repository.NewUserRepository(bunDB)
+	userRepository := user.NewUserRepository(bunDB)
 	client, err := ProvideRedisClient(configConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	redisRepository := ProvideRedisRepository(client)
-	userServiceConfig := ProvideUserServiceConfig(userRepository, redisRepository)
+	repository := ProvideRedisRepository(client)
+	userServiceConfig := ProvideUserServiceConfig(userRepository, repository)
 	userService := service.NewUserService(userServiceConfig)
 	userHandler := handler.NewUserHandler(userService)
 	tokenService, err := ProvideTokenService(configConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	authService := service.NewAuthService(userRepository, tokenService, redisRepository)
+	serviceConfig := ProvideServiceConfig(configConfig)
+	authService := service.NewAuthService(userRepository, tokenService, repository, serviceConfig)
 	authHandler := auth.NewAuthHandler(authService)
 	emailService := ProvideEmailService(configConfig)
 	emailHandler := ProvideEmailHandler(emailService)
@@ -70,7 +71,7 @@ func InitializeServer() (*server.Server, func(), error) {
 		EmailHandler:   emailHandler,
 		TokenConfig:    tokenConfig,
 		DB:             bunDB,
-		RedisRepo:      redisRepository,
+		RedisRepo:      repository,
 		TracerProvider: tracerProvider,
 	}
 	serverServer := server.New(configConfig, slogLogger, serverOptions)
@@ -115,9 +116,8 @@ var TokenConfigSet = wire.NewSet(config.NewTokenConfig)
 var TokenServiceSet = wire.NewSet(token.NewTokenService, TokenConfigSet)
 
 // AuthServiceSet is a Wire provider set that provides the auth service with its dependencies
-var AuthServiceSet = wire.NewSet(
-	ProvideTokenService,
-	ProvideRedisRepository, service.NewAuthService, TokenServiceSet,
+var AuthServiceSet = wire.NewSet(service.NewAuthService, ProvideServiceConfig,
+	TokenServiceSet,
 	RedisSet,
 )
 
@@ -158,10 +158,20 @@ func ProvideTracerProvider(cfg *config.Config) (*trace.TracerProvider, func(), e
 	}, nil
 }
 
+// ProvideServiceConfig provides the service configuration
+func ProvideServiceConfig(cfg *config.Config) service.Config {
+	return service.Config{
+		Auth: service.AuthConfig{
+			AccessTokenExpiry: cfg.Auth.AccessTokenExpiry,
+		},
+	}
+}
+
 var ServiceSet = wire.NewSet(service.NewUserService, ProvideEmailService,
 	ProvideUserServiceConfig,
 	AuthServiceSet,
+	ProvideServiceConfig,
 )
 
 // RepositorySet is a Wire provider set that provides all repositories
-var RepositorySet = wire.NewSet(repository.NewUserRepository, RedisSet)
+var RepositorySet = wire.NewSet(user.NewUserRepository, RedisSet)

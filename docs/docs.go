@@ -248,7 +248,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "message\": \"Email sent successfully",
+                        "description": "Email sent successfully",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -257,7 +257,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "error\": \"Bad request",
+                        "description": "Bad request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -266,7 +266,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error\": \"Internal server error",
+                        "description": "Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -279,7 +279,7 @@ const docTemplate = `{
         },
         "/health": {
             "get": {
-                "description": "Returns the health status of the API along with version information",
+                "description": "Returns the health status of the API along with version and database information",
                 "consumes": [
                     "application/json"
                 ],
@@ -545,9 +545,24 @@ const docTemplate = `{
                 }
             }
         },
+        "health.DatabaseStatus": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "ok"
+                }
+            }
+        },
         "health.HealthResponse": {
             "type": "object",
             "properties": {
+                "database": {
+                    "$ref": "#/definitions/health.DatabaseStatus"
+                },
                 "status": {
                     "type": "string",
                     "example": "ok"

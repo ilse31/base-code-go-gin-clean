@@ -6,10 +6,10 @@ import "fmt"
 type Config struct {
 	Server  ServerConfig
 	DB      DatabaseConfig
-	Redis   RedisConfig
 	Tracing TracingConfig
 	Email   EmailConfig
 	Auth    AuthConfig
+	Redis   RedisConfig
 }
 
 // AuthConfig holds authentication related configuration
@@ -50,6 +50,13 @@ type EmailConfig struct {
 	From         string
 }
 
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+}
+
 // Load loads the configuration from environment variables
 func Load() (*Config, error) {
 	cfg := &Config{
@@ -58,25 +65,25 @@ func Load() (*Config, error) {
 			Environment: GetEnv("ENVIRONMENT", "development"),
 		},
 		DB: DatabaseConfig{
-			Host:     GetEnv("DB_HOST", "localhost"),
-			Port:     GetEnv("DB_PORT", "5432"),
-			User:     GetEnv("DB_USER", "postgres"),
-			Password: GetEnv("DB_PASSWORD", "120579"),
-			Name:     GetEnv("DB_NAME", "postgres"),
+			Host:     GetEnv("DB_HOST", ""),
+			Port:     GetEnv("DB_PORT", ""),
+			User:     GetEnv("DB_USER", ""),
+			Password: GetEnv("DB_PASSWORD", ""),
+			Name:     GetEnv("DB_NAME", ""),
 			SSLMode:  GetEnv("DB_SSLMODE", "disable"),
 		},
 		Redis: RedisConfig{
-			Host:     GetEnv("REDIS_HOST", "localhost"),
-			Port:     GetEnv("REDIS_PORT", "6379"),
+			Host:     GetEnv("REDIS_HOST", ""),
+			Port:     GetEnv("REDIS_PORT", ""),
 			Password: GetEnv("REDIS_PASSWORD", ""),
-			DB:       0, // Default Redis database
+			DB:       0,
 		},
 		Auth: AuthConfig{
-			AccessTokenSecret:  GetEnv("ACCESS_TOKEN_SECRET", "your-default-access-token-secret-key-32-chars-long"),
-			RefreshTokenSecret: GetEnv("REFRESH_TOKEN_SECRET", "your-default-refresh-token-secret-key-32-chars-long"),
-			AccessTokenExpiry:  15,  // 15 minutes
-			RefreshTokenExpiry: 168, // 7 days in hours
-			Issuer:             "base-code-go-gin-clean",
+			AccessTokenSecret:  GetEnv("ACCESS_TOKEN_SECRET", ""),
+			RefreshTokenSecret: GetEnv("REFRESH_TOKEN_SECRET", ""),
+			AccessTokenExpiry:  GetEnvAsInt("ACCESS_TOKEN_EXPIRY_MINUTES", 15),
+			RefreshTokenExpiry: GetEnvAsInt("REFRESH_TOKEN_EXPIRY_HOURS", 24),
+			Issuer:             GetEnv("JWT_ISSUER", "base-code-go-gin-clean"),
 		},
 		Tracing: TracingConfig{
 			Enabled:     GetEnv("TRACING_ENABLED", "false") == "true",
@@ -85,12 +92,28 @@ func Load() (*Config, error) {
 			DSN:         GetEnv("UPTRACE_DSN", ""),
 		},
 		Email: EmailConfig{
-			SMTPServer:   GetEnv("SMTP_SERVER", "smtp.gmail.com"),
-			SMTPPort:     GetEnv("SMTP_PORT", "587"),
+			SMTPServer:   GetEnv("SMTP_SERVER", ""),
+			SMTPPort:     GetEnv("SMTP_PORT", ""),
 			SMTPUsername: GetEnv("SMTP_USERNAME", ""),
 			SMTPPassword: GetEnv("SMTP_PASSWORD", ""),
-			From:         GetEnv("EMAIL_FROM", "noreply@example.com"),
+			From:         GetEnv("EMAIL_FROM", ""),
 		},
+	}
+
+	if cfg.DB.Host == "" || cfg.DB.Port == "" || cfg.DB.User == "" || cfg.DB.Password == "" || cfg.DB.Name == "" {
+		return nil, fmt.Errorf("database credentials are not set")
+	}
+
+	if cfg.Redis.Host == "" || cfg.Redis.Port == "" {
+		return nil, fmt.Errorf("redis credentials are not set")
+	}
+
+	if cfg.Auth.AccessTokenSecret == "" || cfg.Auth.RefreshTokenSecret == "" {
+		return nil, fmt.Errorf("JWT secrets are not set")
+	}
+
+	if cfg.Email.SMTPServer == "" || cfg.Email.SMTPPort == "" || cfg.Email.SMTPUsername == "" || cfg.Email.SMTPPassword == "" || cfg.Email.From == "" {
+		return nil, fmt.Errorf("email credentials are not set")
 	}
 
 	return cfg, nil

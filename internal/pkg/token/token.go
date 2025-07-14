@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"base-code-go-gin-clean/internal/config"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -18,15 +19,19 @@ type TokenService interface {
 }
 
 type tokenService struct {
-	accessSecret  string
-	refreshSecret string
+	accessSecret       string
+	refreshSecret      string
+	accessTokenExpiry  time.Duration
+	refreshTokenExpiry time.Duration
 }
 
 // NewTokenService creates a new TokenService with the given configuration
 func NewTokenService(config *config.TokenConfig) TokenService {
 	return &tokenService{
-		accessSecret:  config.AccessSecret,
-		refreshSecret: config.RefreshSecret,
+		accessSecret:       config.AccessSecret,
+		refreshSecret:      config.RefreshSecret,
+		accessTokenExpiry:  config.AccessTokenExpiry,
+		refreshTokenExpiry: config.RefreshTokenExpiry,
 	}
 }
 
@@ -35,13 +40,8 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-const (
-	accessTokenExpiry  = 15 * time.Minute
-	refreshTokenExpiry = 7 * 24 * time.Hour // 7 days
-)
-
 func (s *tokenService) GenerateAccessToken(userID string) (string, error) {
-	expirationTime := time.Now().Add(accessTokenExpiry)
+	expirationTime := time.Now().Add(s.accessTokenExpiry)
 
 	claims := &Claims{
 		UserID: userID,

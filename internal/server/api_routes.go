@@ -12,7 +12,11 @@ import (
 )
 
 func (s *Server) setupRoutes(opts *ServerOptions) {
-	healthHandler := health.NewHealthHandler(service.NewHealthService(sqlx.NewDb(s.db.DB, "postgres")))
+	var healthHandler *health.HealthHandler
+	if s.db != nil {
+		sqlxDB := sqlx.NewDb(s.db.DB, "postgres")
+		healthHandler = health.NewHealthHandler(service.NewHealthService(sqlxDB))
+	}
 
 	// API v1 routes
 	apiV1 := s.router.Group("/api/v1")

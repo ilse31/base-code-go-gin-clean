@@ -14,6 +14,7 @@ type emailService struct {
 	smtpUsername string
 	smtpPassword string
 	from         string
+	sendMail     func(string, smtp.Auth, string, []string, []byte) error
 }
 
 func NewEmailService(cfg *config.Config) domain.EmailService {
@@ -23,6 +24,7 @@ func NewEmailService(cfg *config.Config) domain.EmailService {
 		smtpUsername: cfg.Email.SMTPUsername,
 		smtpPassword: cfg.Email.SMTPPassword,
 		from:         cfg.Email.From,
+		sendMail:     smtp.SendMail,
 	}
 }
 
@@ -38,7 +40,7 @@ func (s *emailService) SendEmail(email *domain.Email) error {
 
 	msg := []byte(headers + email.Body)
 
-	err := smtp.SendMail(
+	err := s.sendMail(
 		fmt.Sprintf("%s:%s", s.smtpServer, s.smtpPort),
 		auth,
 		s.from,

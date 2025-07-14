@@ -1,10 +1,15 @@
 package test
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -25,8 +30,6 @@ func SetupTestDB(t *testing.T) *bun.DB {
 	err := db.Ping()
 	assert.NoError(t, err, "Failed to connect to test database")
 
-	// You might want to run migrations here if needed
-
 	return db
 }
 
@@ -36,4 +39,50 @@ func TeardownTestDB(t *testing.T, db *bun.DB) {
 		err := db.Close()
 		assert.NoError(t, err, "Failed to close test database connection")
 	}
+}
+
+// SetupTestRouter creates a test Gin router
+func SetupTestRouter() *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	return gin.New()
+}
+
+// MakeTestRequest creates and executes a test HTTP request
+func MakeTestRequest(router *gin.Engine, method, path string) *httptest.ResponseRecorder {
+	req, _ := http.NewRequest(method, path, nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	return resp
+}
+
+// AssertJSONResponse asserts common JSON response patterns
+func AssertJSONResponse(t *testing.T, resp *httptest.ResponseRecorder, expectedStatus int) {
+	assert.Equal(t, expectedStatus, resp.Code)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header().Get("Content-Type"))
+}
+
+// TestRequest contains both the request and response for testing
+type TestRequest struct {
+	Request  *http.Request
+	Response *httptest.ResponseRecorder
+}
+
+// MakeTestRequestWithBody creates a test HTTP request with body
+func MakeTestRequestWithBody(router *gin.Engine, method, path string, body *bytes.Reader) *TestRequest {
+	req, _ := http.NewRequest(method, path, body)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	return &TestRequest{
+		Request:  req,
+		Response: resp,
+	}
+}
+
+// MakeJSONBody creates a JSON-encoded request body from the given data
+func MakeJSONBody(t *testing.T, data interface{}) *bytes.Reader {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		t.Fatalf("Failed to marshal JSON: %v", err)
+	}
+	return bytes.NewReader(jsonData)
 }
